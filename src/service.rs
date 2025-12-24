@@ -67,6 +67,10 @@ async fn handle_connection(
             break;
         }
         total_read += read;
+        // detect end
+        if buffer[..total_read].ends_with(b"\n") {
+            break;
+        }
     }
 
     let request = String::from_utf8_lossy(&buffer[..total_read]);
