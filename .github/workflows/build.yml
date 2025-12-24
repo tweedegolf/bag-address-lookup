@@ -97,7 +97,7 @@ jobs:
 
       - name: Create bag.bin
         if: steps.bag_cache.outputs.cache-hit != 'true'
-        run: cargo run --release --bin create-db --features "skip_read_database"
+        run: cargo run --release --bin create-db --features "create"
 
       - name: Save bag.bin cache
         if: steps.bag_cache.outputs.cache-hit != 'true'
