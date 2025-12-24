@@ -93,7 +93,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: data/bag.bin
-          key: bag-bin-${{ hashFiles('Cargo.lock') }}
+          key: bag-bin
 
       - name: Create bag.bin
         if: steps.bag_cache.outputs.cache-hit != 'true'
@@ -104,7 +104,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: data/bag.bin
-          key: bag-bin-${{ hashFiles('Cargo.lock') }}
+          key: bag-bin
 
       - name: Upload bag.bin
         uses: actions/upload-artifact@v4
