@@ -43,6 +43,10 @@ Example response:
 {"pr":"Street Name","wp":"Locality"}
 ```
 
+Logging control:
+
+Set `BAG_ADDRESS_LOOKUP_QUIET=1` (or `true`) to suppress request and response logs.
+
 Lookup mode (postal code and house number arguments):
 
 ```sh

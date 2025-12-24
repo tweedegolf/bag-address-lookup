@@ -30,7 +30,7 @@ dependencies = [
 
 [[package]]
 name = "bag_address_lookup"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "flate2",
  "quick-xml",

@@ -8,6 +8,12 @@ use tokio::{
 
 use crate::database::DatabaseHandle;
 
+fn logging_disabled() -> bool {
+    std::env::var("BAG_ADDRESS_LOOKUP_QUIET")
+        .map(|v| v == "1" || v.to_lowercase() == "true")
+        .unwrap_or(false)
+}
+
 pub async fn serve(addr: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
     let listener = TcpListener::bind(addr).await?;
 
@@ -71,6 +77,13 @@ async fn handle_connection(
     let method = parts.next().unwrap_or_default();
     let target = parts.next().unwrap_or_default();
 
+    if !logging_disabled() {
+        println!(
+            "[bag-address-lookup] received request: {} {}",
+            method, target
+        );
+    }
+
     if method != "GET" {
         write_response(stream, 405, &json_error("method not allowed")).await?;
         return Ok(());
@@ -103,10 +116,12 @@ async fn handle_connection(
         write_response(stream, 400, &json_error("missing postal_code")).await?;
         return Ok(());
     };
+
     let Some(house_number) = house_number else {
         write_response(stream, 400, &json_error("missing house_number")).await?;
         return Ok(());
     };
+
     if !is_valid_postal_code(&postal_code) {
         write_response(stream, 400, &json_error("invalid postal_code")).await?;
         return Ok(());
@@ -137,6 +152,14 @@ async fn write_response(
         405 => "Method Not Allowed",
         _ => "Internal Server Error",
     };
+
+    if !logging_disabled() {
+        if status_code == 200 {
+            println!("[bag-address-lookup] successful lookup: {}", body);
+        } else {
+            eprintln!("[bag-address-lookup] error {}: {}", status_code, body);
+        }
+    }
 
     let header = format!(
         "HTTP/1.1 {status_code} {status_text}\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
