@@ -29,8 +29,8 @@ pub struct Database {
     pub ranges: Vec<NumberRange>,
 }
 
-pub struct DatabaseView<'a> {
-    bytes: &'a [u8],
+pub struct DatabaseView {
+    bytes: &'static [u8],
     locality_count: u32,
     public_space_count: u32,
     range_count: u32,
@@ -50,16 +50,62 @@ pub(crate) const DATABASE_BYTES: &[u8] =
 #[cfg(feature = "create")]
 pub(crate) const DATABASE_BYTES: &[u8] = &[];
 
-pub enum DatabaseHandle<'a> {
+pub enum DatabaseHandle {
     Decoded(Database),
-    View(DatabaseView<'a>),
+    View(DatabaseView),
 }
 
-impl DatabaseHandle<'_> {
+pub struct Localities<'a> {
+    inner: LocalitiesInner<'a>,
+}
+
+enum LocalitiesInner<'a> {
+    Decoded(std::slice::Iter<'a, String>),
+    View { view: &'a DatabaseView, index: u32 },
+}
+
+impl<'a> Iterator for Localities<'a> {
+    type Item = &'a str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.inner {
+            LocalitiesInner::Decoded(iter) => iter.next().map(String::as_str),
+            LocalitiesInner::View { view, index } => {
+                if *index > u16::MAX as u32 {
+                    return None;
+                }
+                while *index < view.locality_count {
+                    let current = *index;
+                    *index += 1;
+                    if current > u16::MAX as u32 {
+                        return None;
+                    }
+                    if let Some(name) = view.locality_name(current as u16) {
+                        return Some(name);
+                    }
+                }
+                None
+            }
+        }
+    }
+}
+
+impl DatabaseHandle {
     pub fn is_empty(&self) -> bool {
         match self {
             DatabaseHandle::Decoded(db) => db.is_empty(),
             DatabaseHandle::View(view) => view.is_empty(),
+        }
+    }
+
+    pub fn localities(&'_ self) -> Localities<'_> {
+        match self {
+            DatabaseHandle::Decoded(db) => Localities {
+                inner: LocalitiesInner::Decoded(db.localities.iter()),
+            },
+            DatabaseHandle::View(view) => Localities {
+                inner: LocalitiesInner::View { view, index: 0 },
+            },
         }
     }
 
@@ -71,7 +117,7 @@ impl DatabaseHandle<'_> {
     }
 
     /// Load the embedded BAG database.
-    pub fn load() -> Result<DatabaseHandle<'static>, DatabaseError> {
+    pub fn load() -> Result<DatabaseHandle, DatabaseError> {
         #[cfg(feature = "compressed_database")]
         {
             use flate2::bufread::GzDecoder;
