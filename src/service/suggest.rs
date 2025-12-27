@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::database::DatabaseHandle;
 
 use super::{Response, json_error, json_list};
@@ -30,11 +32,12 @@ pub(crate) fn handle_suggest(database: &DatabaseHandle, query: &str) -> Response
 /// Suggest localities using a light-weight fuzzy ranking:
 /// - Fast substring match gets a top score boost.
 /// - Otherwise combine subsequence coverage with bigram similarity.
-/// - Ignore candidates that end up with a zero score.
+/// - Ignore candidates that end up with a score below the threshold value.
 /// - Return at most 10 highest scored matches.
-const SUGGEST_THRESHOLD: f32 = 0.7;
+const DEFAULT_SUGGEST_THRESHOLD: f32 = 0.7;
 
 fn suggest_localities(database: &DatabaseHandle, query: &str) -> Vec<String> {
+    let threshold = suggest_threshold();
     let normalized = normalize_query(query);
     if normalized.is_empty() {
         return Vec::new();
@@ -44,7 +47,7 @@ fn suggest_localities(database: &DatabaseHandle, query: &str) -> Vec<String> {
     for locality in database.localities() {
         let candidate = normalize_query(locality);
         let score = fuzzy_score(&normalized, &candidate);
-        if score >= SUGGEST_THRESHOLD {
+        if score >= threshold {
             scored.push((score, locality));
         }
     }
@@ -66,6 +69,15 @@ fn suggest_localities(database: &DatabaseHandle, query: &str) -> Vec<String> {
 /// Normalize user input and candidates for case-insensitive matching.
 fn normalize_query(value: &str) -> String {
     value.trim().to_lowercase()
+}
+
+/// Read the minimum fuzzy-match score from the environment.
+fn suggest_threshold() -> f32 {
+    std::env::var("BAG_ADDRESS_LOOKUP_SUGGEST_THRESHOLD")
+        .ok()
+        .and_then(|value| value.parse::<f32>().ok())
+        .filter(|value| value.is_finite() && *value >= 0.0)
+        .unwrap_or(DEFAULT_SUGGEST_THRESHOLD)
 }
 
 /// Compute a fuzzy score between the search `needle` and a candidate `haystack`.
@@ -118,50 +130,94 @@ fn subsequence_ratio(needle: &str, haystack: &str) -> f32 {
 }
 
 /// Dice coefficient using character bigrams.
+///
+/// This measures similarity based on overlapping adjacent character pairs.
+/// For each string, we count how many bigrams appear (including duplicates),
+/// then compute `2 * overlap / (total_a + total_b)`. The result ranges
+/// from 0.0 (no shared bigrams) to 1.0 (identical bigram multiset).
+/// It is tolerant of small typos because nearby characters still form
+/// similar bigrams even when a single character differs.
 fn dice_coefficient(a: &str, b: &str) -> f32 {
-    let a_bigrams = bigrams(a);
-    let b_bigrams = bigrams(b);
-    if a_bigrams.is_empty() || b_bigrams.is_empty() {
+    let mut b_counts: HashMap<(char, char), usize> = HashMap::new();
+    let mut total_b = 0usize;
+    let mut b_chars = b.chars();
+    let mut prev_b = match b_chars.next() {
+        Some(ch) => ch,
+        None => return 0.0,
+    };
+    for ch in b_chars {
+        total_b += 1;
+        *b_counts.entry((prev_b, ch)).or_insert(0usize) += 1;
+        prev_b = ch;
+    }
+    if total_b == 0 {
         return 0.0;
     }
 
     let mut intersection = 0usize;
-    let mut b_counts: std::collections::HashMap<(char, char), usize> =
-        std::collections::HashMap::new();
-    for bg in b_bigrams.iter().copied() {
-        *b_counts.entry(bg).or_insert(0usize) += 1;
-    }
-
-    for bg in a_bigrams.iter() {
-        if let Some(count) = b_counts.get_mut(bg)
-            && *count > 0
-        {
-            *count -= 1;
-            intersection += 1;
+    let mut total_a = 0usize;
+    let mut a_chars = a.chars();
+    let mut prev_a = match a_chars.next() {
+        Some(ch) => ch,
+        None => return 0.0,
+    };
+    for ch in a_chars {
+        total_a += 1;
+        if let Some(count) = b_counts.get_mut(&(prev_a, ch)) {
+            if *count > 0 {
+                *count -= 1;
+                intersection += 1;
+            }
         }
+        prev_a = ch;
+    }
+    if total_a == 0 {
+        return 0.0;
     }
 
-    let total = a_bigrams.len() + b_bigrams.len();
+    let total = total_a + total_b;
     (2 * intersection) as f32 / total as f32
-}
-
-/// Build adjacent character bigrams for dice similarity.
-fn bigrams(value: &str) -> Vec<(char, char)> {
-    let chars: Vec<char> = value.chars().collect();
-    if chars.len() < 2 {
-        return Vec::new();
-    }
-    let mut grams = Vec::with_capacity(chars.len() - 1);
-    for window in chars.windows(2) {
-        grams.push((window[0], window[1]));
-    }
-    grams
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{dice_coefficient, fuzzy_score, normalize_query, subsequence_ratio};
     use super::super::test_utils::{send_request, test_database};
     use std::sync::Arc;
+
+    #[test]
+    fn fuzzy_score_prefers_substring_match() {
+        let needle = normalize_query("dama");
+        let exact = normalize_query("amsterdam");
+        let fuzzy = normalize_query("rotterdam");
+        let exact_score = fuzzy_score(&needle, &exact);
+        let fuzzy_score_value = fuzzy_score(&needle, &fuzzy);
+
+        assert!(exact_score > 1.0);
+        assert!(exact_score > fuzzy_score_value);
+    }
+
+    #[test]
+    fn subsequence_ratio_respects_order() {
+        let needle = normalize_query("ams");
+        let in_order = normalize_query("amsterdam");
+        let out_of_order = normalize_query("smaarten");
+
+        assert!(subsequence_ratio(&needle, &in_order) > 0.9);
+        assert!(subsequence_ratio(&needle, &out_of_order) < 0.9);
+    }
+
+    #[test]
+    fn dice_coefficient_is_symmetric() {
+        let a = normalize_query("utrecht");
+        let b = normalize_query("utrech");
+
+        let left = dice_coefficient(&a, &b);
+        let right = dice_coefficient(&b, &a);
+
+        assert!((left - right).abs() < f32::EPSILON);
+        assert!(left > 0.5);
+    }
 
     #[tokio::test]
     async fn suggest_success() {

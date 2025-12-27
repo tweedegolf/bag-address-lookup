@@ -43,9 +43,11 @@ Example response:
 {"pr":"Street Name","wp":"Locality"}
 ```
 
-Logging control:
+Environment variables:
 
-Set `BAG_ADDRESS_LOOKUP_QUIET=1` (or `true`) to suppress request and response logs.
+- `BAG_ADDRESS_LOOKUP_QUIET=1` (or `true`) suppresses request/response logs.
+- `BAG_ADDRESS_LOOKUP_SUGGEST_THRESHOLD` sets the minimum fuzzy match score for `/suggest`
+  (default: `0.7`, non-negative finite float).
 
 Lookup mode (postal code and house number arguments):
 
