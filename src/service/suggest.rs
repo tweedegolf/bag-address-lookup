@@ -163,11 +163,11 @@ fn dice_coefficient(a: &str, b: &str) -> f32 {
     };
     for ch in a_chars {
         total_a += 1;
-        if let Some(count) = b_counts.get_mut(&(prev_a, ch)) {
-            if *count > 0 {
-                *count -= 1;
-                intersection += 1;
-            }
+        if let Some(count) = b_counts.get_mut(&(prev_a, ch))
+            && *count > 0
+        {
+            *count -= 1;
+            intersection += 1;
         }
         prev_a = ch;
     }
@@ -181,17 +181,20 @@ fn dice_coefficient(a: &str, b: &str) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{dice_coefficient, fuzzy_score, normalize_query, subsequence_ratio};
     use super::super::test_utils::{send_request, test_database};
+    use super::{dice_coefficient, fuzzy_score, normalize_query, subsequence_ratio};
     use std::sync::Arc;
 
     #[test]
     fn fuzzy_score_prefers_substring_match() {
-        let needle = normalize_query("dama");
+        let needle = normalize_query("dam");
         let exact = normalize_query("amsterdam");
-        let fuzzy = normalize_query("rotterdam");
+        let fuzzy = normalize_query("dandandimam");
         let exact_score = fuzzy_score(&needle, &exact);
         let fuzzy_score_value = fuzzy_score(&needle, &fuzzy);
+
+        dbg!(&exact_score);
+        dbg!(&fuzzy_score_value);
 
         assert!(exact_score > 1.0);
         assert!(exact_score > fuzzy_score_value);

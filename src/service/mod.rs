@@ -122,7 +122,13 @@ async fn handle_connection(
     if method != "GET" {
         let response = Response::new(405, json_error("method not allowed"));
         let duration_ms = start.elapsed().as_millis();
-        write_response(stream, response.status_code, &response.body, Some(duration_ms)).await?;
+        write_response(
+            stream,
+            response.status_code,
+            &response.body,
+            Some(duration_ms),
+        )
+        .await?;
         return Ok(());
     }
 
@@ -134,7 +140,13 @@ async fn handle_connection(
     };
 
     let duration_ms = start.elapsed().as_millis();
-    write_response(stream, response.status_code, &response.body, Some(duration_ms)).await?;
+    write_response(
+        stream,
+        response.status_code,
+        &response.body,
+        Some(duration_ms),
+    )
+    .await?;
     Ok(())
 }
 
