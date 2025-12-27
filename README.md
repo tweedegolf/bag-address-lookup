@@ -43,6 +43,24 @@ Example response:
 {"pr":"Street Name","wp":"Locality"}
 ```
 
+Suggest localities by prefix or fuzzy match:
+
+```sh
+curl "http://127.0.0.1:8080/suggest?wp=Amster"
+```
+
+Example response:
+
+```json
+["Amsterdam","Amstelveen"]
+```
+
+If the `wp` query param is missing, the service responds with `400` and:
+
+```json
+{"error":"missing wp"}
+```
+
 Environment variables:
 
 - `BAG_ADDRESS_LOOKUP_QUIET=1` (or `true`) suppresses request/response logs.
