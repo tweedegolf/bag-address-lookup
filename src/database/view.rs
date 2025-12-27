@@ -15,8 +15,8 @@ pub(crate) struct RangeRef {
     pub(crate) locality_index: u16,
 }
 
-impl<'a> DatabaseView<'a> {
-    pub fn from_bytes(bytes: &'a [u8]) -> Result<Self, DatabaseError> {
+impl DatabaseView {
+    pub fn from_bytes(bytes: &'static [u8]) -> Result<Self, DatabaseError> {
         let header = Header::from_bytes(bytes)?;
 
         let locality_offsets_len = header.locality_offsets_len()?;
@@ -137,7 +137,7 @@ impl<'a> DatabaseView<'a> {
         }
     }
 
-    pub(crate) fn locality_name(&self, index: u16) -> Option<&'a str> {
+    pub(crate) fn locality_name(&self, index: u16) -> Option<&'static str> {
         self.name_at(
             self.locality_offsets_offset,
             self.locality_data_offset,
@@ -147,7 +147,7 @@ impl<'a> DatabaseView<'a> {
         )
     }
 
-    pub(crate) fn public_space_name(&self, index: u32) -> Option<&'a str> {
+    pub(crate) fn public_space_name(&self, index: u32) -> Option<&'static str> {
         self.name_at(
             self.public_space_offsets_offset,
             self.public_space_data_offset,
@@ -164,7 +164,7 @@ impl<'a> DatabaseView<'a> {
         data_end: usize,
         index: u32,
         count: u32,
-    ) -> Option<&'a str> {
+    ) -> Option<&'static str> {
         if index >= count {
             return None;
         }

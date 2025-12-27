@@ -43,9 +43,29 @@ Example response:
 {"pr":"Street Name","wp":"Locality"}
 ```
 
-Logging control:
+Suggest localities by prefix or fuzzy match:
 
-Set `BAG_ADDRESS_LOOKUP_QUIET=1` (or `true`) to suppress request and response logs.
+```sh
+curl "http://127.0.0.1:8080/suggest?wp=Amster"
+```
+
+Example response:
+
+```json
+["Amsterdam","Amstelveen"]
+```
+
+If the `wp` query param is missing, the service responds with `400` and:
+
+```json
+{"error":"missing wp"}
+```
+
+Environment variables:
+
+- `BAG_ADDRESS_LOOKUP_QUIET=1` (or `true`) suppresses request/response logs.
+- `BAG_ADDRESS_LOOKUP_SUGGEST_THRESHOLD` sets the minimum fuzzy match score for `/suggest`
+  (default: `0.7`, non-negative finite float).
 
 Lookup mode (postal code and house number arguments):
 

@@ -5,7 +5,7 @@ use super::{
     util::{encode_pc, normalize_postalcode},
 };
 
-impl<'a> DatabaseView<'a> {
+impl DatabaseView {
     pub fn lookup(&self, postalcode: &str, house_number: u32) -> Option<(&str, &str)> {
         let normalized_postalcode = normalize_postalcode(postalcode)?;
         let pc_encoded = encode_pc(&normalized_postalcode);
