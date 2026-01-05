@@ -121,9 +121,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-musl
             artifact: bag-service-linux-x64
-          - os: macos-14
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            artifact: bag-service-linux-aarch64
+            use_cross: true
+          - os: macos-latest
             target: aarch64-apple-darwin
             artifact: bag-service-apple-aarch64
     steps:
@@ -143,7 +147,22 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build
+      - name: Optionally install musl-tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get install -y musl-tools
+
+      - name: Install cross
+        if: matrix.use_cross == 'true'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Build (cross)
+        if: matrix.use_cross == 'true'
+        run: cross build --release --bin bag-service --target ${{ matrix.target }}
+
+      - name: Build (cargo)
+        if: matrix.use_cross != 'true'
         run: cargo build --release --bin bag-service --target ${{ matrix.target }}
 
       - name: Package
@@ -164,13 +183,19 @@ jobs:
     if: needs.check-version.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Download linux artifact
+      - name: Download linux x64 artifact
         uses: actions/download-artifact@v4
         with:
           name: bag-service-linux-x64
           path: dist
 
-      - name: Download mac artifact
+      - name: Download linux aarch64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bag-service-linux-aarch64
+          path: dist
+
+      - name: Download macos artifact
         uses: actions/download-artifact@v4
         with:
           name: bag-service-apple-aarch64
@@ -184,4 +209,5 @@ jobs:
           generate_release_notes: true
           files: |
             dist/bag-service-linux-x64
+            dist/bag-service-linux-aarch64
             dist/bag-service-apple-aarch64
