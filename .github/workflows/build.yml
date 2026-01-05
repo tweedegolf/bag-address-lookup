@@ -120,16 +120,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             target: x86_64-unknown-linux-musl
             artifact: bag-service-linux-x64
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
-            artifact: bag-service-linux-aarch64
-            use_cross: true
-          - os: macos-latest
+            artifact: bag-service-linux-arm64
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            artifact: bag-service-macos-x64
+          - os: macos-15
             target: aarch64-apple-darwin
-            artifact: bag-service-apple-aarch64
+            artifact: bag-service-macos-arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -148,21 +150,14 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Optionally install musl-tools
-        if: matrix.target == 'x86_64-unknown-linux-musl'
+        if: matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'arm64-unknown-linux-musl'
         run: sudo apt-get install -y musl-tools
 
-      - name: Install cross
-        if: matrix.use_cross == 'true'
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cross
+      - uses: Swatinem/rust-cache@v2
 
-      - name: Build (cross)
-        if: matrix.use_cross == 'true'
-        run: cross build --release --bin bag-service --target ${{ matrix.target }}
-
-      - name: Build (cargo)
-        if: matrix.use_cross != 'true'
+      - name: Build
+        env:
+          CC_aarch64_unknown_linux_musl: ${{ matrix.target == 'aarch64-unknown-linux-musl' && 'musl-gcc' || '' }}
         run: cargo build --release --bin bag-service --target ${{ matrix.target }}
 
       - name: Package
@@ -189,16 +184,22 @@ jobs:
           name: bag-service-linux-x64
           path: dist
 
-      - name: Download linux aarch64 artifact
+      - name: Download linux arm64 artifact
         uses: actions/download-artifact@v4
         with:
-          name: bag-service-linux-aarch64
+          name: bag-service-linux-arm64
           path: dist
 
-      - name: Download macos artifact
+      - name: Download macos x64 artifact
         uses: actions/download-artifact@v4
         with:
-          name: bag-service-apple-aarch64
+          name: bag-service-macos-x64
+          path: dist
+
+      - name: Download macos arm64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bag-service-macos-arm64
           path: dist
 
       - name: Create release
@@ -209,5 +210,6 @@ jobs:
           generate_release_notes: true
           files: |
             dist/bag-service-linux-x64
-            dist/bag-service-linux-aarch64
-            dist/bag-service-apple-aarch64
+            dist/bag-service-linux-arm64
+            dist/bag-service-macos-x64
+            dist/bag-service-macos-arm64
