@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   check-version:
@@ -113,7 +114,7 @@ jobs:
           path: data/bag.bin
 
   build:
-    needs: [check-version, build-database]
+    needs: [ check-version, build-database ]
     if: needs.check-version.outputs.should_run == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
@@ -178,19 +179,28 @@ jobs:
     if: needs.check-version.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
       - name: Download linux x64 artifact
         uses: actions/download-artifact@v4
         with:
           name: bag-service-linux-x64
           path: dist
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and push docker image
         uses: docker/build-push-action@v6
         with:
+          file: Dockerfile
           push: true
-          build-args: "version=${{ needs.version.outputs.version }}"
+          build-args: "version=${{ needs.check-version.outputs.version }}"
           context: dist
-          tags: "ghcr.io/tweedegolf/bag-address-lookup:${{ needs.version.outputs.version }}"
+          tags: "ghcr.io/tweedegolf/bag-address-lookup:${{ needs.check-version.outputs.version }},ghcr.io/tweedegolf/bag-address-lookup:latest"
 
   release:
     needs:
