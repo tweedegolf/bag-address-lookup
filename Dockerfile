@@ -14,7 +14,7 @@ USER $user
 FROM final-base AS bag-service
 ARG version=dev
 
-COPY --chown=nonroot:nonroot ./bag-service ./bag-service
+COPY --chown=nonroot:nonroot ./bag-service-linux-x64 ./bag-service
 RUN chmod 700 bag-service
 
 EXPOSE 3000
