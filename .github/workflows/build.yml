@@ -171,6 +171,27 @@ jobs:
           name: ${{ matrix.artifact }}
           path: dist/${{ matrix.artifact }}
 
+  docker:
+    needs:
+      - check-version
+      - build
+    if: needs.check-version.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download linux x64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bag-service-linux-x64
+          path: dist
+
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          build-args: "version=${{ needs.version.outputs.version }}"
+          context: dist
+          tags: "ghcr.io/tweedegolf/bag-address-lookup:${{ needs.version.outputs.version }}"
+
   release:
     needs:
       - check-version
