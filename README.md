@@ -92,32 +92,32 @@ This binary is loaded into the resulting application at compile time.
 
 All integers are little-endian.
 
-| Offset | Size | Field | Description |
-| --- | --- | --- | --- |
-| 0 | 4 | magic header | `BAG1` |
-| 4 | 4 | locality_count | number of locality names |
-| 8 | 4 | public_space_count | number of street names |
-| 12 | 4 | range_count | number of address ranges |
-| 16 | 4 | locality_offsets_offset | start of locality offsets array |
-| 20 | 4 | locality_data_offset | start of locality name bytes |
-| 24 | 4 | public_space_offsets_offset | start of public space offsets array |
-| 28 | 4 | public_space_data_offset | start of public space name bytes |
-| 32 | 4 | ranges_offset | start of range records |
-| ... | ... | locality_offsets | `(locality_count + 1)` u32 offsets |
-| ... | ... | locality_data | concatenated locality bytes |
-| ... | ... | public_space_offsets | `(public_space_count + 1)` u32 offsets |
-| ... | ... | public_space_data | concatenated public space bytes |
-| ... | 16 * range_count | ranges | range records |
+| Offset | Size             | Field                       | Description                            |
+|--------|------------------|-----------------------------|----------------------------------------|
+| 0      | 4                | magic header                | `BAG1`                                 |
+| 4      | 4                | locality_count              | number of locality names               |
+| 8      | 4                | public_space_count          | number of street names                 |
+| 12     | 4                | range_count                 | number of address ranges               |
+| 16     | 4                | locality_offsets_offset     | start of locality offsets array        |
+| 20     | 4                | locality_data_offset        | start of locality name bytes           |
+| 24     | 4                | public_space_offsets_offset | start of public space offsets array    |
+| 28     | 4                | public_space_data_offset    | start of public space name bytes       |
+| 32     | 4                | ranges_offset               | start of range records                 |
+| ...    | ...              | locality_offsets            | `(locality_count + 1)` u32 offsets     |
+| ...    | ...              | locality_data               | concatenated locality bytes            |
+| ...    | ...              | public_space_offsets        | `(public_space_count + 1)` u32 offsets |
+| ...    | ...              | public_space_data           | concatenated public space bytes        |
+| ...    | 16 * range_count | ranges                      | range records                          |
 
 Range record (16 bytes):
 
-| Field | Size | Description |
-| --- | --- | --- |
-| postal_code | 4 | encoded postal code |
-| start | 4 | first house number in range |
-| length | 2 | number of addresses in range |
-| public_space_index | 4 | index into public_space list |
-| locality_index | 2 | index into locality list |
+| Field              | Size | Description                  |
+|--------------------|------|------------------------------|
+| postal_code        | 4    | encoded postal code          |
+| start              | 4    | first house number in range  |
+| length             | 2    | number of addresses in range |
+| public_space_index | 4    | index into public_space list |
+| locality_index     | 2    | index into locality list     |
 
 By default the `bag.bin` file is stored compressed with gzip. At startup, the web service
 stream-decompresses it and decodes the data into:
