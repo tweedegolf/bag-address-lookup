@@ -18,6 +18,18 @@ jobs:
         with:
           persist-credentials: true
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Set git identity
         run: |
           git config --global user.name "${GITHUB_ACTOR}"
@@ -56,13 +68,13 @@ jobs:
       - name: Push
         run: git push origin HEAD:main
 
-      - name: Trigger checks workflow
+      - name: Trigger build workflow
         uses: actions/github-script@v7
         with:
           script: |
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: "check.yml",
+              workflow_id: "build.yml",
               ref: "main",
             });
