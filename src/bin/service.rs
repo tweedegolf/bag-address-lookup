@@ -2,6 +2,15 @@
 async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
 
+    // Print version number if requested
+    if args.len() == 1 && (args[0] == "--version" || args[0] == "-v") {
+        println!(
+            "BAG Address Lookup Service version {}",
+            env!("CARGO_PKG_VERSION")
+        );
+        return;
+    }
+
     if args.len() == 2 {
         let postal_code = &args[0];
         let house_number: u32 = match args[1].parse() {

@@ -181,8 +181,10 @@ fn dice_coefficient(a: &str, b: &str) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::{send_request, test_database};
-    use super::{dice_coefficient, fuzzy_score, normalize_query, subsequence_ratio};
+    use super::{
+        super::test_utils::{send_request, test_database},
+        dice_coefficient, fuzzy_score, normalize_query, subsequence_ratio,
+    };
     use std::sync::Arc;
 
     #[test]
