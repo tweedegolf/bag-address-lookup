@@ -7,23 +7,31 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   check:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          components: rustfmt, clippy
+          persist-credentials: false
+
+      - name: Setup Rust
+        shell: bash
+        run: >
+          rustup update stable &&
+          rustup default stable &&
+          rustup component add --toolchain stable rustfmt clippy
 
       - name: Create an empty database file
         run: mkdir -p data && touch data/bag.bin
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: |
             ~/.cargo/registry
