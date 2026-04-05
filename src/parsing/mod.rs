@@ -1,5 +1,7 @@
 mod addresses;
 mod localities;
+pub mod municipalities;
+mod municipality_relations;
 mod public_spaces;
 mod xml_utils;
 
@@ -13,6 +15,7 @@ use std::{
 
 pub use addresses::{Address, parse_addresses};
 pub use localities::{Locality, parse_localities};
+pub use municipality_relations::{MunicipalityRelation, parse_municipality_relations};
 pub use public_spaces::{PublicSpace, parse_public_spaces};
 use zip::ZipArchive;
 
@@ -23,6 +26,7 @@ pub struct ParsedData {
     pub addresses: Vec<addresses::Address>,
     pub public_spaces: Vec<public_spaces::PublicSpace>,
     pub localities: Vec<localities::Locality>,
+    pub municipality_relations: Vec<municipality_relations::MunicipalityRelation>,
 }
 
 impl ParsedData {
@@ -40,33 +44,48 @@ impl ParsedData {
                 continue;
             }
 
-            match &name[..7] {
-                "9999WPL" => {
-                    data.localities = ParsedData::parse_nested_xml_zip(
-                        start,
-                        &mut entry,
-                        "localities",
-                        |reader| parse_localities(reader),
-                    )?;
-                }
-                "9999OPR" => {
-                    data.public_spaces = ParsedData::parse_nested_xml_zip(
-                        start,
-                        &mut entry,
-                        "public spaces",
-                        |reader| parse_public_spaces(reader),
-                    )?;
-                }
-                "9999NUM" => {
-                    data.addresses = ParsedData::parse_nested_xml_zip(
-                        start,
-                        &mut entry,
-                        "addresses",
-                        |reader| parse_addresses(reader),
-                    )?;
-                }
-                _ => {
-                    // ignore other files
+            // The BAG extract contains nested ZIPs identified by a prefix.
+            // See https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bag/catalogus-bag
+            if name.starts_with("GEM-WPL") {
+                // Gemeente-Woonplaats relatie (locality to municipality mapping)
+                data.municipality_relations = ParsedData::parse_nested_xml_zip(
+                    start,
+                    &mut entry,
+                    "municipality relations",
+                    |reader| parse_municipality_relations(reader),
+                )?;
+            } else {
+                match &name[..7] {
+                    // Woonplaats (locality) - BAG catalog §7.2
+                    "9999WPL" => {
+                        data.localities = ParsedData::parse_nested_xml_zip(
+                            start,
+                            &mut entry,
+                            "localities",
+                            |reader| parse_localities(reader),
+                        )?;
+                    }
+                    // OpenbareRuimte (public space) - BAG catalog §7.3
+                    "9999OPR" => {
+                        data.public_spaces = ParsedData::parse_nested_xml_zip(
+                            start,
+                            &mut entry,
+                            "public spaces",
+                            |reader| parse_public_spaces(reader),
+                        )?;
+                    }
+                    // Nummeraanduiding (address designation) - BAG catalog §7.4
+                    "9999NUM" => {
+                        data.addresses = ParsedData::parse_nested_xml_zip(
+                            start,
+                            &mut entry,
+                            "addresses",
+                            |reader| parse_addresses(reader),
+                        )?;
+                    }
+                    _ => {
+                        // ignore other files
+                    }
                 }
             }
         }

@@ -1,3 +1,9 @@
+// Parses Woonplaats (locality/city/town) objects from the BAG extract.
+// BAG catalog §7.2: https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bag/catalogus-bag
+//
+// A Woonplaats is a formally designated area within a municipality. Records with
+// an end validity date (eindGeldigheid) are historical and excluded.
+
 use std::io::BufRead;
 
 use quick_xml::{events::Event, reader::Reader};
@@ -5,8 +11,11 @@ use quick_xml::{events::Event, reader::Reader};
 use super::xml_utils::read_simple_tag;
 
 const WP_TAG: &[u8] = b"Objecten:Woonplaats";
+// §7.2.1 identificatie - unique four-digit national identifier
 const ID_TAG: &[u8] = b"Objecten:identificatie";
+// §7.2.2 naam - official locality name
 const NAME_TAG: &[u8] = b"Objecten:naam";
+// §7.2.6 tijdvakGeldigheid/eindGeldigheid - presence means this version is superseded
 const END_VALIDITY_TAG: &[u8] = b"Historie:eindGeldigheid";
 
 #[derive(Debug, PartialEq, Eq)]

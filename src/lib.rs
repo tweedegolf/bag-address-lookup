@@ -26,4 +26,10 @@ pub use create::create_database;
 pub use parsing::{Address, Locality, PublicSpace};
 
 #[cfg(feature = "create")]
-pub use transform::{LocalityMap, encode_addresses, index_localities, index_public_spaces};
+pub use parsing::MunicipalityRelation;
+
+#[cfg(feature = "create")]
+pub use transform::{
+    LocalityMap, MunicipalityMap, encode_addresses, index_localities, index_municipalities,
+    index_public_spaces,
+};

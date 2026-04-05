@@ -20,6 +20,10 @@ pub(crate) fn read_u16_bytes(bytes: &[u8], offset: usize) -> Option<u16> {
     Some(u16::from_le_bytes(slice.try_into().ok()?))
 }
 
+pub(crate) fn read_u8_bytes(bytes: &[u8], offset: usize) -> Option<u8> {
+    bytes.get(offset).copied()
+}
+
 #[cfg(feature = "compressed_database")]
 pub(crate) fn read_u16_reader<R: Read>(reader: &mut R) -> Result<u16, DatabaseError> {
     let mut buf = [0u8; 2];
@@ -27,6 +31,15 @@ pub(crate) fn read_u16_reader<R: Read>(reader: &mut R) -> Result<u16, DatabaseEr
         .read_exact(&mut buf)
         .map_err(|_| DatabaseError::DecompressionFailed)?;
     Ok(u16::from_le_bytes(buf))
+}
+
+#[cfg(feature = "compressed_database")]
+pub(crate) fn read_u8_reader<R: Read>(reader: &mut R) -> Result<u8, DatabaseError> {
+    let mut buf = [0u8; 1];
+    reader
+        .read_exact(&mut buf)
+        .map_err(|_| DatabaseError::DecompressionFailed)?;
+    Ok(buf[0])
 }
 
 #[cfg(feature = "compressed_database")]

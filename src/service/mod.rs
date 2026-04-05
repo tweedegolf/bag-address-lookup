@@ -8,7 +8,9 @@ use tokio::{
 
 use crate::database::DatabaseHandle;
 
+mod localities_list;
 mod lookup;
+mod municipalities;
 mod suggest;
 
 /// Minimal response wrapper for handler results.
@@ -133,9 +135,16 @@ async fn handle_connection(
     }
 
     let (path, query) = target.split_once('?').unwrap_or((target, ""));
+
+    if path == "/" {
+        return write_html_response(stream, API_DOCS_HTML).await;
+    }
+
     let response = match path {
         "/suggest" => suggest::handle_suggest(database.as_ref(), query),
-        "/" | "/lookup" => lookup::handle_lookup(database.as_ref(), query),
+        "/lookup" => lookup::handle_lookup(database.as_ref(), query),
+        "/localities" => localities_list::handle_localities(database.as_ref()),
+        "/municipalities" => municipalities::handle_municipalities(database.as_ref()),
         _ => Response::new(404, json_error("not found")),
     };
 
@@ -147,6 +156,21 @@ async fn handle_connection(
         Some(duration_ms),
     )
     .await?;
+    Ok(())
+}
+
+/// Write an HTML response and close the connection.
+async fn write_html_response(
+    stream: &mut tokio::net::TcpStream,
+    body: &str,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let header = format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        body.len()
+    );
+    stream.write_all(header.as_bytes()).await?;
+    stream.write_all(body.as_bytes()).await?;
+    stream.shutdown().await?;
     Ok(())
 }
 
@@ -195,6 +219,8 @@ async fn write_response(
     stream.shutdown().await
 }
 
+const API_DOCS_HTML: &str = include_str!("api_docs.html");
+
 /// JSON for a successful lookup response.
 pub(crate) fn json_ok(public_space: &str, locality: &str) -> String {
     serde_json::to_string(&json!({ "pr": public_space, "wp": locality }))
@@ -234,12 +260,35 @@ pub(crate) mod test_utils {
             length: 2,
             public_space_index: 0,
             locality_index: 0,
+            step: 1,
         }];
+
+        let municipalities = vec![
+            "Amsterdam".to_string(),
+            "Rotterdam".to_string(),
+            "Utrecht".to_string(),
+        ];
+        let provinces = vec![
+            "Noord-Holland".to_string(),
+            "Utrecht".to_string(),
+            "Zuid-Holland".to_string(),
+        ];
+        // Amsterdam -> Amsterdam (code 363, Noord-Holland)
+        // Rotterdam -> Rotterdam (code 599, Zuid-Holland)
+        // Utrecht -> Utrecht (code 344, Utrecht)
+        let municipality_codes = vec![363, 599, 344];
+        let locality_municipality = vec![0, 1, 2]; // each locality maps to its municipality
+        let municipality_province = vec![0, 2, 1]; // Amsterdam->NH, Rotterdam->ZH, Utrecht->Utrecht
 
         DatabaseHandle::Decoded(Database {
             localities,
             public_spaces,
             ranges,
+            municipalities,
+            provinces,
+            municipality_codes,
+            locality_municipality,
+            municipality_province,
         })
     }
 
