@@ -21,12 +21,20 @@ pub struct NumberRange {
     pub length: u16,
     pub public_space_index: u32,
     pub locality_index: u16,
+    pub step: u8,
 }
 
 pub struct Database {
     pub localities: Vec<String>,
     pub public_spaces: Vec<String>,
     pub ranges: Vec<NumberRange>,
+    pub municipalities: Vec<String>,
+    pub provinces: Vec<String>,
+    pub municipality_codes: Vec<u16>,
+    /// Maps locality_index -> municipality_index (u16::MAX = unknown).
+    pub locality_municipality: Vec<u16>,
+    /// Maps municipality_index -> province_index.
+    pub municipality_province: Vec<u8>,
 }
 
 pub struct DatabaseView {
@@ -41,6 +49,17 @@ pub struct DatabaseView {
     public_space_data_offset: usize,
     public_space_data_end: usize,
     ranges_offset: usize,
+    municipality_count: u32,
+    province_count: u32,
+    municipality_offsets_offset: usize,
+    municipality_data_offset: usize,
+    municipality_data_end: usize,
+    province_offsets_offset: usize,
+    province_data_offset: usize,
+    province_data_end: usize,
+    locality_municipality_map_offset: usize,
+    municipality_province_map_offset: usize,
+    municipality_codes_offset: usize,
 }
 
 #[cfg(not(feature = "create"))]
@@ -116,6 +135,22 @@ impl DatabaseHandle {
         }
     }
 
+    /// Iterate over all localities, yielding (name, municipality_name, municipality_code).
+    pub fn locality_details(&self) -> Vec<(&str, &str, u16)> {
+        match self {
+            DatabaseHandle::Decoded(db) => db.locality_details(),
+            DatabaseHandle::View(view) => view.locality_details(),
+        }
+    }
+
+    /// Iterate over all municipalities, yielding (name, code, province_name).
+    pub fn municipality_details(&self) -> Vec<(&str, u16, &str)> {
+        match self {
+            DatabaseHandle::Decoded(db) => db.municipality_details(),
+            DatabaseHandle::View(view) => view.municipality_details(),
+        }
+    }
+
     /// Load the embedded BAG database.
     pub fn load() -> Result<DatabaseHandle, DatabaseError> {
         #[cfg(feature = "compressed_database")]
@@ -160,11 +195,7 @@ mod tests {
 
     #[test]
     fn test_decode_db() {
-        #[cfg(feature = "compressed_database")]
         let db_path = PathBuf::from("test/bag.bin");
-
-        #[cfg(not(feature = "compressed_database"))]
-        let db_path = PathBuf::from("test/bag_uncompressed.bin");
 
         let db_bytes = std::fs::read(&db_path).unwrap();
         let mut decoder = GzDecoder::new(&db_bytes[..]);

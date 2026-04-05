@@ -1,3 +1,10 @@
+// Parses Nummeraanduiding (address designation) objects from the BAG extract.
+// BAG catalog §7.4: https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bag/catalogus-bag
+//
+// A Nummeraanduiding assigns a house number and postal code to an addressable
+// object via an OpenbareRuimte. Only currently valid records with status
+// "Naamgeving uitgegeven" are included.
+
 use std::io::BufRead;
 
 use quick_xml::{Reader, events::Event};
@@ -5,22 +12,25 @@ use quick_xml::{Reader, events::Event};
 use super::xml_utils::read_simple_tag;
 
 const NUM_TAG: &[u8] = b"Objecten:Nummeraanduiding";
+// §7.4.1 identificatie - 16-digit national identifier
 const ID_TAG: &[u8] = b"Objecten:identificatie";
+// §7.4.2 huisnummer - house number (1-99999)
 const HOUSE_NUMBER_TAG: &[u8] = b"Objecten:huisnummer";
-const HOUSE_LETTER_TAG: &[u8] = b"Objecten:huisletter";
-const HOUSE_NUMBER_ADDITION_TAG: &[u8] = b"Objecten:huisnummertoevoeging";
+// §7.4.5 postcode - 6-character Dutch postal code (e.g. "1234AB")
 const POSTAL_CODE_TAG: &[u8] = b"Objecten:postcode";
+// §7.4.8 ligtAan - reference to the OpenbareRuimte this address belongs to
 const PUBLIC_SPACE_REF_TAG: &[u8] = b"Objecten-ref:OpenbareRuimteRef";
+// §7.4.10 tijdvakGeldigheid/eindGeldigheid - presence means this version is superseded
 const END_VALIDITY_TAG: &[u8] = b"Historie:eindGeldigheid";
+// §7.4.7 status - lifecycle status of the address designation
 const STATUS_TAG: &[u8] = b"Objecten:status";
+// Only include addresses where a name/number has been officially issued
 const ISSUED_STATUS: &str = "Naamgeving uitgegeven";
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Address {
     pub id: String,
     pub house_number: u32,
-    pub house_letter: Option<String>,
-    pub house_number_addition: Option<String>,
     pub postal_code: String,
     pub public_space_id: String,
 }
@@ -55,8 +65,6 @@ fn parse_address<B: BufRead>(
 ) -> Result<Option<Address>, quick_xml::Error> {
     let mut id = None;
     let mut house_number = None;
-    let mut house_letter = None;
-    let mut house_number_addition = None;
     let mut postal_code = None;
     let mut public_space_id = None;
     let mut expired = false;
@@ -78,16 +86,6 @@ fn parse_address<B: BufRead>(
                     } else {
                         invalid = Some(value);
                     }
-                }
-            }
-            Event::Start(e) if e.name().as_ref() == HOUSE_LETTER_TAG => {
-                if let Some(value) = read_simple_tag(reader, HOUSE_LETTER_TAG, buf)? {
-                    house_letter = Some(value);
-                }
-            }
-            Event::Start(e) if e.name().as_ref() == HOUSE_NUMBER_ADDITION_TAG => {
-                if let Some(value) = read_simple_tag(reader, HOUSE_NUMBER_ADDITION_TAG, buf)? {
-                    house_number_addition = Some(value);
                 }
             }
             Event::Start(e) if e.name().as_ref() == POSTAL_CODE_TAG => {
@@ -134,8 +132,6 @@ fn parse_address<B: BufRead>(
             Ok(Some(Address {
                 id,
                 house_number,
-                house_letter,
-                house_number_addition,
                 postal_code,
                 public_space_id,
             }))

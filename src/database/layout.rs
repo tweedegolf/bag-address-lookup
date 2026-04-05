@@ -16,6 +16,15 @@ pub(crate) struct Header {
     pub(crate) public_space_offsets_offset: usize,
     pub(crate) public_space_data_offset: usize,
     pub(crate) ranges_offset: usize,
+    pub(crate) municipality_count: u32,
+    pub(crate) province_count: u32,
+    pub(crate) municipality_offsets_offset: usize,
+    pub(crate) municipality_data_offset: usize,
+    pub(crate) province_offsets_offset: usize,
+    pub(crate) province_data_offset: usize,
+    pub(crate) locality_municipality_map_offset: usize,
+    pub(crate) municipality_province_map_offset: usize,
+    pub(crate) municipality_codes_offset: usize,
 }
 
 impl Header {
@@ -70,6 +79,66 @@ impl Header {
             .ok_or(DatabaseError::InvalidLayout)
     }
 
+    pub(crate) fn municipality_offsets_len(&self) -> Result<usize, DatabaseError> {
+        (self.municipality_count as usize + 1)
+            .checked_mul(4)
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
+    pub(crate) fn province_offsets_len(&self) -> Result<usize, DatabaseError> {
+        (self.province_count as usize + 1)
+            .checked_mul(4)
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
+    pub(crate) fn expected_municipality_data_offset(&self) -> Result<usize, DatabaseError> {
+        let offsets_len = self.municipality_offsets_len()?;
+        self.municipality_offsets_offset
+            .checked_add(offsets_len)
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
+    pub(crate) fn expected_province_offsets_offset(
+        &self,
+        municipality_data_len: usize,
+    ) -> Result<usize, DatabaseError> {
+        self.municipality_data_offset
+            .checked_add(municipality_data_len)
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
+    pub(crate) fn expected_province_data_offset(&self) -> Result<usize, DatabaseError> {
+        let offsets_len = self.province_offsets_len()?;
+        self.province_offsets_offset
+            .checked_add(offsets_len)
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
+    pub(crate) fn expected_locality_municipality_map_offset(
+        &self,
+        province_data_len: usize,
+    ) -> Result<usize, DatabaseError> {
+        self.province_data_offset
+            .checked_add(province_data_len)
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
+    pub(crate) fn expected_municipality_province_map_offset(&self) -> Result<usize, DatabaseError> {
+        self.locality_municipality_map_offset
+            .checked_add(
+                (self.locality_count as usize)
+                    .checked_mul(2)
+                    .ok_or(DatabaseError::InvalidLayout)?,
+            )
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
+    pub(crate) fn expected_municipality_codes_offset(&self) -> Result<usize, DatabaseError> {
+        self.municipality_province_map_offset
+            .checked_add(self.municipality_count as usize)
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
     pub(crate) fn from_reader<R: Read>(reader: &mut R) -> Result<Self, DatabaseError> {
         let mut magic = [0u8; 4];
         reader
@@ -89,6 +158,16 @@ impl Header {
         let public_space_data_offset = read_u32_reader(reader)? as usize;
         let ranges_offset = read_u32_reader(reader)? as usize;
 
+        let municipality_count = read_u32_reader(reader)?;
+        let province_count = read_u32_reader(reader)?;
+        let municipality_offsets_offset = read_u32_reader(reader)? as usize;
+        let municipality_data_offset = read_u32_reader(reader)? as usize;
+        let province_offsets_offset = read_u32_reader(reader)? as usize;
+        let province_data_offset = read_u32_reader(reader)? as usize;
+        let locality_municipality_map_offset = read_u32_reader(reader)? as usize;
+        let municipality_province_map_offset = read_u32_reader(reader)? as usize;
+        let municipality_codes_offset = read_u32_reader(reader)? as usize;
+
         let header = Self {
             locality_count,
             public_space_count,
@@ -98,6 +177,15 @@ impl Header {
             public_space_offsets_offset,
             public_space_data_offset,
             ranges_offset,
+            municipality_count,
+            province_count,
+            municipality_offsets_offset,
+            municipality_data_offset,
+            province_offsets_offset,
+            province_data_offset,
+            locality_municipality_map_offset,
+            municipality_province_map_offset,
+            municipality_codes_offset,
         };
 
         header.validate_base()?;

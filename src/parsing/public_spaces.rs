@@ -1,3 +1,9 @@
+// Parses OpenbareRuimte (public space / street) objects from the BAG extract.
+// BAG catalog §7.3: https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bag/catalogus-bag
+//
+// An OpenbareRuimte is a public space (usually a street) within a Woonplaats.
+// Only currently valid records with status "Naamgeving uitgegeven" are included.
+
 use std::io::BufRead;
 
 use quick_xml::{events::Event, reader::Reader};
@@ -5,11 +11,17 @@ use quick_xml::{events::Event, reader::Reader};
 use super::xml_utils::read_simple_tag;
 
 const OPR_TAG: &[u8] = b"Objecten:OpenbareRuimte";
+// §7.3.1 identificatie - 16-digit national identifier
 const ID_TAG: &[u8] = b"Objecten:identificatie";
+// §7.3.2 naam - official public space name (max 80 characters)
 const NAME_TAG: &[u8] = b"Objecten:naam";
+// §7.3.6 ligtIn - reference to the Woonplaats this public space belongs to
 const LOCALITY_REF_TAG: &[u8] = b"Objecten-ref:WoonplaatsRef";
+// §7.3.8 tijdvakGeldigheid/eindGeldigheid - presence means this version is superseded
 const END_VALIDITY_TAG: &[u8] = b"Historie:eindGeldigheid";
+// §7.3.4 status - lifecycle status of the public space
 const STATUS_TAG: &[u8] = b"Objecten:status";
+// Only include public spaces where a name has been officially issued
 const ISSUED_STATUS: &str = "Naamgeving uitgegeven";
 
 #[derive(Debug, PartialEq, Eq)]

@@ -1,5 +1,6 @@
 use std::{collections::HashMap, error::Error};
 
+use crate::parsing::{MunicipalityRelation, municipalities::Municipality};
 use crate::{Address, Locality, NumberRange, PublicSpace, encode_pc};
 
 pub struct LocalityMap {
@@ -35,6 +36,112 @@ pub fn index_localities(localities: Vec<Locality>) -> Result<LocalityMap, Box<dy
     Ok(LocalityMap {
         locality_names,
         locality_map,
+    })
+}
+
+pub struct MunicipalityMap {
+    pub municipality_names: Vec<String>,
+    pub province_names: Vec<String>,
+    pub municipality_codes: Vec<u16>,
+    /// For each locality (by sorted locality_index), the municipality_index.
+    pub locality_municipality: Vec<u16>,
+    /// For each municipality (by sorted municipality_index), the province_index.
+    pub municipality_province: Vec<u8>,
+}
+
+/// Build municipality and province indexes from GWR relations and CBS data.
+pub fn index_municipalities(
+    relations: Vec<MunicipalityRelation>,
+    cbs_municipalities: &[Municipality],
+    locality_map: &HashMap<u16, u16>,
+    locality_count: usize,
+) -> Result<MunicipalityMap, Box<dyn Error>> {
+    // Build CBS lookup: gemeente_code -> (name, province)
+    let mut cbs_lookup: HashMap<u16, (&str, &str)> =
+        HashMap::with_capacity(cbs_municipalities.len());
+    for m in cbs_municipalities {
+        cbs_lookup.insert(m.code, (&m.name, &m.province));
+    }
+
+    // Build locality_id -> (municipality_name, province_name) from GWR + CBS
+    let mut locality_to_municipality: HashMap<u16, (&str, &str)> =
+        HashMap::with_capacity(relations.len());
+    for rel in &relations {
+        if let Some(&(name, province)) = cbs_lookup.get(&rel.municipality_code) {
+            locality_to_municipality.insert(rel.locality_id, (name, province));
+        }
+    }
+
+    // Collect and deduplicate municipality names (sorted)
+    let mut municipality_names: Vec<String> = locality_to_municipality
+        .values()
+        .map(|(name, _)| name.to_string())
+        .collect();
+    municipality_names.sort();
+    municipality_names.dedup();
+
+    if municipality_names.len() > u16::MAX as usize {
+        return Err("too many municipalities for u16 index".into());
+    }
+
+    let mut municipality_name_index: HashMap<&str, u16> =
+        HashMap::with_capacity(municipality_names.len());
+    for (i, name) in municipality_names.iter().enumerate() {
+        municipality_name_index.insert(name, i as u16);
+    }
+
+    // Collect and deduplicate province names (sorted)
+    let mut province_names: Vec<String> = locality_to_municipality
+        .values()
+        .map(|(_, prov)| prov.to_string())
+        .collect();
+    province_names.sort();
+    province_names.dedup();
+
+    if province_names.len() > u8::MAX as usize {
+        return Err("too many provinces for u8 index".into());
+    }
+
+    let mut province_name_index: HashMap<&str, u8> = HashMap::with_capacity(province_names.len());
+    for (i, name) in province_names.iter().enumerate() {
+        province_name_index.insert(name, i as u8);
+    }
+
+    // Build municipality_codes: for each municipality_index, the CBS code
+    let mut municipality_codes = vec![0u16; municipality_names.len()];
+    for m in cbs_municipalities {
+        if let Some(&idx) = municipality_name_index.get(m.name.as_str()) {
+            municipality_codes[idx as usize] = m.code;
+        }
+    }
+
+    // Build municipality_province: for each municipality_index, the province_index
+    let mut municipality_province = vec![0u8; municipality_names.len()];
+    for m in cbs_municipalities {
+        if let Some(&m_idx) = municipality_name_index.get(m.name.as_str()) {
+            if let Some(&p_idx) = province_name_index.get(m.province.as_str()) {
+                municipality_province[m_idx as usize] = p_idx;
+            }
+        }
+    }
+
+    // Build locality_municipality: for each locality_index, the municipality_index
+    // Use u16::MAX as sentinel for localities without a known municipality
+    let mut locality_municipality = vec![u16::MAX; locality_count];
+    for (locality_id, &locality_index) in locality_map {
+        if let Some(&(muni_name, _)) = locality_to_municipality.get(locality_id) {
+            if let Some(&m_idx) = municipality_name_index.get(muni_name) {
+                locality_municipality[locality_index as usize] = m_idx;
+            }
+        }
+    }
+
+    Ok(MunicipalityMap {
+        municipality_names,
+        province_names,
+        municipality_codes,
+        locality_municipality,
+        municipality_province,
     })
 }
 
@@ -118,13 +225,22 @@ pub fn encode_addresses(
                     && range.public_space_index == public_space_index
                     && range.locality_index == locality_index =>
             {
-                let range_end = range.start + range.length as u32;
+                let range_end = range.start + range.length as u32 * range.step as u32;
                 if house_number <= range_end {
+                    // Duplicate or already covered by the range
                     continue;
                 }
 
-                if range.length < u16::MAX && house_number == range_end + 1 {
-                    range.length = range.length.saturating_add(1);
+                let diff = house_number - range_end;
+
+                if range.length == 0 && diff <= u8::MAX as u32 {
+                    // Second entry determines the step
+                    let step = diff as u8;
+                    range.step = step;
+                    range.length = 1;
+                } else if range.length < u16::MAX && diff == range.step as u32 {
+                    // Continues the established step pattern
+                    range.length += 1;
                 } else {
                     let finished = current.take().expect("Range is missing");
                     ranges.push(finished);
@@ -132,6 +248,7 @@ pub fn encode_addresses(
                         postal_code,
                         start: house_number,
                         length: 0,
+                        step: 1,
                         public_space_index,
                         locality_index,
                     });
@@ -145,6 +262,7 @@ pub fn encode_addresses(
                     postal_code,
                     start: house_number,
                     length: 0,
+                    step: 1,
                     public_space_index,
                     locality_index,
                 });
@@ -253,56 +371,49 @@ mod tests {
             Address {
                 id: "a-1".to_string(),
                 house_number: 2,
-                house_letter: None,
-                house_number_addition: None,
+
                 postal_code: "1234AB".to_string(),
                 public_space_id: "ps-1".to_string(),
             },
             Address {
                 id: "a-2".to_string(),
                 house_number: 1,
-                house_letter: None,
-                house_number_addition: None,
+
                 postal_code: "1234AB".to_string(),
                 public_space_id: "ps-1".to_string(),
             },
             Address {
                 id: "a-3".to_string(),
                 house_number: 2,
-                house_letter: None,
-                house_number_addition: None,
+
                 postal_code: "1234AB".to_string(),
                 public_space_id: "ps-1".to_string(),
             },
             Address {
                 id: "a-4".to_string(),
                 house_number: 4,
-                house_letter: None,
-                house_number_addition: None,
+
                 postal_code: "1234AB".to_string(),
                 public_space_id: "ps-1".to_string(),
             },
             Address {
                 id: "a-5".to_string(),
                 house_number: 1,
-                house_letter: None,
-                house_number_addition: None,
+
                 postal_code: "1234AB".to_string(),
                 public_space_id: "ps-2".to_string(),
             },
             Address {
                 id: "a-6".to_string(),
                 house_number: 3,
-                house_letter: None,
-                house_number_addition: None,
+
                 postal_code: "1234AC".to_string(),
                 public_space_id: "ps-1".to_string(),
             },
             Address {
                 id: "a-7".to_string(),
                 house_number: 9,
-                house_letter: None,
-                house_number_addition: None,
+
                 postal_code: "1234AB".to_string(),
                 public_space_id: "missing".to_string(),
             },
@@ -319,6 +430,7 @@ mod tests {
                 length: 1,
                 public_space_index: 0,
                 locality_index: 0,
+                step: 1,
             },
             NumberRange {
                 postal_code: pc_ab,
@@ -326,6 +438,7 @@ mod tests {
                 length: 0,
                 public_space_index: 0,
                 locality_index: 0,
+                step: 1,
             },
             NumberRange {
                 postal_code: pc_ab,
@@ -333,6 +446,7 @@ mod tests {
                 length: 0,
                 public_space_index: 1,
                 locality_index: 0,
+                step: 1,
             },
             NumberRange {
                 postal_code: pc_ac,
@@ -340,6 +454,7 @@ mod tests {
                 length: 0,
                 public_space_index: 0,
                 locality_index: 0,
+                step: 1,
             },
         ];
 
@@ -348,8 +463,94 @@ mod tests {
             assert_eq!(actual.postal_code, expected.postal_code);
             assert_eq!(actual.start, expected.start);
             assert_eq!(actual.length, expected.length);
+            assert_eq!(actual.step, expected.step);
             assert_eq!(actual.public_space_index, expected.public_space_index);
             assert_eq!(actual.locality_index, expected.locality_index);
         }
+    }
+
+    #[test]
+    fn encode_addresses_detects_step() {
+        let mut public_spaces_map = std::collections::HashMap::new();
+        public_spaces_map.insert("ps-1".to_string(), (0, 0));
+
+        // Odd numbers 1,3,5,7 and even numbers 2,4,6
+        let addresses: Vec<Address> = [1, 3, 5, 7, 2, 4, 6]
+            .into_iter()
+            .enumerate()
+            .map(|(i, n)| Address {
+                id: format!("a-{i}"),
+                house_number: n,
+                postal_code: "5678CD".to_string(),
+                public_space_id: "ps-1".to_string(),
+            })
+            .collect();
+
+        let ranges = encode_addresses(addresses, &public_spaces_map);
+
+        let pc = encode_pc(b"5678CD");
+
+        // Sorted: 1,2,3,4,5,6,7
+        // 1→2: step=1, 1→2→3: step=1, ..., 1→2→3→4→5→6→7: single range step=1
+        assert_eq!(ranges.len(), 1);
+        assert_eq!(ranges[0].postal_code, pc);
+        assert_eq!(ranges[0].start, 1);
+        assert_eq!(ranges[0].length, 6);
+        assert_eq!(ranges[0].step, 1);
+    }
+
+    #[test]
+    fn encode_addresses_odd_even_stepping() {
+        let mut public_spaces_map = std::collections::HashMap::new();
+        public_spaces_map.insert("ps-1".to_string(), (0, 0));
+
+        // Only odd numbers: 1,3,5,7,9
+        let addresses: Vec<Address> = [1, 3, 5, 7, 9]
+            .into_iter()
+            .enumerate()
+            .map(|(i, n)| Address {
+                id: format!("a-{i}"),
+                house_number: n,
+                postal_code: "5678CD".to_string(),
+                public_space_id: "ps-1".to_string(),
+            })
+            .collect();
+
+        let ranges = encode_addresses(addresses, &public_spaces_map);
+
+        assert_eq!(ranges.len(), 1);
+        assert_eq!(ranges[0].start, 1);
+        assert_eq!(ranges[0].length, 4);
+        assert_eq!(ranges[0].step, 2);
+    }
+
+    #[test]
+    fn encode_addresses_step_break() {
+        let mut public_spaces_map = std::collections::HashMap::new();
+        public_spaces_map.insert("ps-1".to_string(), (0, 0));
+
+        // 2,4,6 then 9 (breaks the step=2 pattern)
+        let addresses: Vec<Address> = [2, 4, 6, 9]
+            .into_iter()
+            .enumerate()
+            .map(|(i, n)| Address {
+                id: format!("a-{i}"),
+                house_number: n,
+                postal_code: "5678CD".to_string(),
+                public_space_id: "ps-1".to_string(),
+            })
+            .collect();
+
+        let ranges = encode_addresses(addresses, &public_spaces_map);
+
+        assert_eq!(ranges.len(), 2);
+        // First range: 2,4,6 with step=2
+        assert_eq!(ranges[0].start, 2);
+        assert_eq!(ranges[0].length, 2);
+        assert_eq!(ranges[0].step, 2);
+        // Second range: 9 alone
+        assert_eq!(ranges[1].start, 9);
+        assert_eq!(ranges[1].length, 0);
+        assert_eq!(ranges[1].step, 1);
     }
 }

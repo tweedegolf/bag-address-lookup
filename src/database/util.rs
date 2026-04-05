@@ -1,5 +1,5 @@
-pub(crate) const DATABASE_MAGIC: [u8; 4] = *b"BAG1";
-pub(crate) const DATABASE_HEADER_SIZE: usize = 36;
+pub(crate) const DATABASE_MAGIC: [u8; 4] = *b"BAG2";
+pub(crate) const DATABASE_HEADER_SIZE: usize = 72;
 
 /// Encode a 6-char postal code into a compact sortable integer.
 pub fn encode_pc(s: &[u8]) -> u32 {

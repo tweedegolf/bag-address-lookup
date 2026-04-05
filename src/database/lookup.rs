@@ -22,8 +22,14 @@ impl DatabaseView {
 
         for index in start..end {
             let range = self.range_at(index)?;
-            let range_end = range.start.checked_add(range.length as u32)?;
-            if house_number >= range.start && house_number <= range_end {
+            let step = range.step as u32;
+            let range_end = range
+                .start
+                .checked_add((range.length as u32).checked_mul(step)?)?;
+            if house_number >= range.start
+                && house_number <= range_end
+                && (house_number - range.start).is_multiple_of(step)
+            {
                 let public_space = self.public_space_name(range.public_space_index)?;
                 let locality = self.locality_name(range.locality_index)?;
                 return Some((public_space, locality));
@@ -45,11 +51,18 @@ impl Database {
 
         for index in start..end {
             let range = self.ranges.get(index)?;
-            let Some(range_end) = range.start.checked_add(range.length as u32) else {
+            let step = range.step as u32;
+            let Some(range_end) = range
+                .start
+                .checked_add((range.length as u32).checked_mul(step)?)
+            else {
                 continue;
             };
 
-            if house_number >= range.start && house_number <= range_end {
+            if house_number >= range.start
+                && house_number <= range_end
+                && (house_number - range.start).is_multiple_of(step)
+            {
                 let public_space_name = self.public_space_name(range.public_space_index)?;
                 let locality_name = self.locality_name(range.locality_index)?;
                 return Some((public_space_name, locality_name));
