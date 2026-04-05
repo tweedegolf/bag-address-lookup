@@ -4,7 +4,10 @@ use std::{
     time::Instant,
 };
 
-use crate::{Database, log_with_elapsed, parsing::ParsedData, parsing::municipalities};
+use crate::{
+    Database, log_with_elapsed,
+    parsing::{ParsedData, municipalities},
+};
 
 static DOWNLOAD_URL: &str =
     "https://service.pdok.nl/kadaster/adressen/atom/v1_0/downloads/lvbag-extract-nl.zip";

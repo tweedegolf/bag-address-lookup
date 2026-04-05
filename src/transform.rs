@@ -1,7 +1,9 @@
 use std::{collections::HashMap, error::Error};
 
-use crate::parsing::{MunicipalityRelation, municipalities::Municipality};
-use crate::{Address, Locality, NumberRange, PublicSpace, encode_pc};
+use crate::{
+    Address, Locality, NumberRange, PublicSpace, encode_pc,
+    parsing::{MunicipalityRelation, municipalities::Municipality},
+};
 
 pub struct LocalityMap {
     pub locality_names: Vec<String>,

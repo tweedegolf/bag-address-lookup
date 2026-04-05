@@ -1,10 +1,18 @@
 use serde_json::json;
-use std::{error::Error, future::Future, sync::Arc, time::Instant};
+use std::{
+    error::Error,
+    future::Future,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpListener,
 };
+
+/// Maximum time allowed for handling a single connection (read + process + write).
+const CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 
 use crate::database::DatabaseHandle;
 
@@ -68,14 +76,31 @@ where
                 let db = database.clone();
                 tokio::spawn(async move {
                     let mut stream = stream;
-                    if let Err(err) = handle_connection(&mut stream, db).await {
-                        let _ = write_response(
-                            &mut stream,
-                            500,
-                            &json_error(&err.to_string()),
-                            None,
-                        )
-                        .await;
+                    match tokio::time::timeout(
+                        CONNECTION_TIMEOUT,
+                        handle_connection(&mut stream, db),
+                    )
+                    .await
+                    {
+                        Ok(Err(err)) => {
+                            let _ = write_response(
+                                &mut stream,
+                                500,
+                                &json_error(&err.to_string()),
+                                None,
+                            )
+                            .await;
+                        }
+                        Err(_elapsed) => {
+                            let _ = write_response(
+                                &mut stream,
+                                408,
+                                &json_error("request timeout"),
+                                None,
+                            )
+                            .await;
+                        }
+                        Ok(Ok(())) => {}
                     }
                 });
             }
@@ -186,6 +211,7 @@ async fn write_response(
         400 => "Bad Request",
         404 => "Not Found",
         405 => "Method Not Allowed",
+        408 => "Request Timeout",
         _ => "Internal Server Error",
     };
 
