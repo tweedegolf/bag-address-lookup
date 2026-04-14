@@ -15,10 +15,10 @@ a{color:#0366d6}
 <tr><td><code>n</code></td><td>House number</td></tr></table>
 <p>Example: <a href="/lookup?pc=1234AB&n=10">/lookup?pc=1234AB&amp;n=10</a></p>
 <h2>GET /suggest</h2>
-<p>Suggest localities matching a prefix.</p>
+<p>Suggest localities and municipalities matching a prefix or fuzzy query.</p>
 <table><tr><th>Param</th><th>Description</th></tr>
-<tr><td><code>wp</code></td><td>Locality name prefix</td></tr></table>
-<p>Example: <a href="/suggest?wp=Amst">/suggest?wp=Amst</a></p>
+<tr><td><code>match</code></td><td>Locality or municipality name (prefix or fuzzy); <code>wp</code> is accepted as a legacy alias</td></tr></table>
+<p>Example: <a href="/suggest?match=Amst">/suggest?match=Amst</a></p>
 <h2>GET /localities</h2>
 <p>List all localities. Returns a JSON array of objects:</p>
 <table><tr><th>Field</th><th>Description</th></tr>

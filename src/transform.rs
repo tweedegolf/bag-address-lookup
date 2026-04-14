@@ -1,4 +1,7 @@
-use std::{collections::HashMap, error::Error};
+use std::{
+    collections::{HashMap, HashSet},
+    error::Error,
+};
 
 use crate::{
     Address, Locality, NumberRange, PublicSpace, encode_pc,
@@ -10,12 +13,79 @@ pub struct LocalityMap {
     pub locality_map: HashMap<u16, u16>,
 }
 
+/// Build a `locality_id -> province_name` map from GWR relations and CBS data.
+pub fn build_locality_province_map<'a>(
+    relations: &[MunicipalityRelation],
+    cbs_municipalities: &'a [Municipality],
+) -> HashMap<u16, &'a str> {
+    let mut cbs: HashMap<u16, &str> = HashMap::with_capacity(cbs_municipalities.len());
+    for m in cbs_municipalities {
+        cbs.insert(m.code, m.province.as_str());
+    }
+
+    let mut result = HashMap::with_capacity(relations.len());
+    for rel in relations {
+        if let Some(&prov) = cbs.get(&rel.municipality_code) {
+            result.insert(rel.locality_id, prov);
+        }
+    }
+    result
+}
+
+/// Standard two-letter abbreviation for each Dutch province.
+/// Panics on unrecognized province names so future additions fail loudly at build time.
+pub fn province_abbreviation(province: &str) -> &'static str {
+    match province {
+        "Drenthe" => "DR",
+        "Flevoland" => "FL",
+        "Friesland" | "Fryslân" => "FR",
+        "Gelderland" => "GE",
+        "Groningen" => "GR",
+        "Limburg" => "LI",
+        "Noord-Brabant" => "NB",
+        "Noord-Holland" => "NH",
+        "Overijssel" => "OV",
+        "Utrecht" => "UT",
+        "Zeeland" => "ZE",
+        "Zuid-Holland" => "ZH",
+        other => panic!("Unknown province: {other}"),
+    }
+}
+
 /// Build stable locality name indexes and id mappings.
-pub fn index_localities(localities: Vec<Locality>) -> Result<LocalityMap, Box<dyn Error>> {
-    let mut locality_names: Vec<String> = localities
-        .iter()
-        .map(|locality| locality.name.clone())
-        .collect();
+///
+/// Locality names that occur in more than one province are disambiguated by
+/// appending the two-letter province code, e.g. `Hengelo (OV)` / `Hengelo (GE)`.
+/// Names that are unique across provinces are left untouched.
+pub fn index_localities(
+    localities: Vec<Locality>,
+    locality_province: &HashMap<u16, &str>,
+) -> Result<LocalityMap, Box<dyn Error>> {
+    // For each name, collect the distinct known provinces it occurs in.
+    let mut name_provinces: HashMap<&str, HashSet<&str>> = HashMap::new();
+    for locality in &localities {
+        if let Some(&prov) = locality_province.get(&locality.id) {
+            name_provinces
+                .entry(locality.name.as_str())
+                .or_default()
+                .insert(prov);
+        }
+    }
+
+    let display_name = |locality: &Locality| -> String {
+        match locality_province.get(&locality.id) {
+            Some(prov)
+                if name_provinces
+                    .get(locality.name.as_str())
+                    .is_some_and(|set| set.len() > 1) =>
+            {
+                format!("{} ({})", locality.name, province_abbreviation(prov))
+            }
+            _ => locality.name.clone(),
+        }
+    };
+
+    let mut locality_names: Vec<String> = localities.iter().map(display_name).collect();
     locality_names.sort();
     locality_names.dedup();
 
@@ -29,8 +99,9 @@ pub fn index_localities(localities: Vec<Locality>) -> Result<LocalityMap, Box<dy
     }
 
     let mut locality_map = HashMap::with_capacity(localities.len());
-    for locality in localities {
-        if let Some(index) = name_index.get(&locality.name) {
+    for locality in &localities {
+        let name = display_name(locality);
+        if let Some(index) = name_index.get(&name) {
             locality_map.insert(locality.id, *index);
         }
     }
@@ -288,6 +359,8 @@ struct EncodedEntry {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::{LocalityMap, encode_addresses, index_localities, index_public_spaces};
     use crate::{Address, Locality, NumberRange, PublicSpace, encode_pc};
 
@@ -307,7 +380,7 @@ mod tests {
             },
         ];
 
-        index_localities(localities).expect("locality map fixture")
+        index_localities(localities, &HashMap::new()).expect("locality map fixture")
     }
 
     #[test]
@@ -329,9 +402,64 @@ mod tests {
             })
             .collect();
 
-        let result = index_localities(localities);
+        let result = index_localities(localities, &HashMap::new());
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn index_localities_disambiguates_across_provinces() {
+        let localities = vec![
+            Locality {
+                id: 1,
+                name: "Hengelo".to_string(),
+            },
+            Locality {
+                id: 2,
+                name: "Hengelo".to_string(),
+            },
+            Locality {
+                id: 3,
+                name: "Utrecht".to_string(),
+            },
+        ];
+        let mut provinces = HashMap::new();
+        provinces.insert(1u16, "Overijssel");
+        provinces.insert(2u16, "Gelderland");
+        provinces.insert(3u16, "Utrecht");
+
+        let result = index_localities(localities, &provinces).expect("disambiguation");
+
+        assert_eq!(
+            result.locality_names,
+            vec!["Hengelo (GE)", "Hengelo (OV)", "Utrecht"]
+        );
+        assert_eq!(result.locality_map.get(&1), Some(&1));
+        assert_eq!(result.locality_map.get(&2), Some(&0));
+        assert_eq!(result.locality_map.get(&3), Some(&2));
+    }
+
+    #[test]
+    fn index_localities_dedups_within_same_province() {
+        let localities = vec![
+            Locality {
+                id: 1,
+                name: "Hengelo".to_string(),
+            },
+            Locality {
+                id: 2,
+                name: "Hengelo".to_string(),
+            },
+        ];
+        let mut provinces = HashMap::new();
+        provinces.insert(1u16, "Overijssel");
+        provinces.insert(2u16, "Overijssel");
+
+        let result = index_localities(localities, &provinces).expect("same-province dedup");
+
+        assert_eq!(result.locality_names, vec!["Hengelo"]);
+        assert_eq!(result.locality_map.get(&1), Some(&0));
+        assert_eq!(result.locality_map.get(&2), Some(&0));
     }
 
     #[test]

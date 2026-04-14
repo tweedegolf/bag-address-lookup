@@ -23,7 +23,7 @@ pub(crate) fn handle_localities(database: &DatabaseHandle) -> Response {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::{send_request, test_database};
+    use super::super::test_utils::{disambiguated_test_database, send_request, test_database};
     use std::sync::Arc;
 
     #[tokio::test]
@@ -36,5 +36,17 @@ mod tests {
         assert!(response.contains("\"wp\":"));
         assert!(response.contains("\"gm\":"));
         assert!(response.contains("\"gm_code\":"));
+    }
+
+    #[tokio::test]
+    async fn localities_includes_province_suffix_for_duplicates() {
+        let db = Arc::new(disambiguated_test_database());
+        let response =
+            send_request("GET /localities HTTP/1.1\r\nHost: localhost\r\n\r\n", db).await;
+
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        assert!(response.contains("\"wp\":\"Hengelo (OV)\""));
+        assert!(response.contains("\"wp\":\"Hengelo (GE)\""));
+        assert!(response.contains("\"wp\":\"Amsterdam\""));
     }
 }

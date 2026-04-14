@@ -1,6 +1,6 @@
 use crate::{
-    Database, LocalityMap, MunicipalityMap, encode_addresses, index_localities,
-    index_municipalities, index_public_spaces,
+    Database, LocalityMap, MunicipalityMap, build_locality_province_map, encode_addresses,
+    index_localities, index_municipalities, index_public_spaces,
     parsing::{ParsedData, municipalities::Municipality},
 };
 
@@ -17,10 +17,13 @@ impl Database {
             municipality_relations,
         } = data;
 
+        let locality_province =
+            build_locality_province_map(&municipality_relations, cbs_municipalities);
+
         let LocalityMap {
             locality_names,
             locality_map,
-        } = index_localities(localities)?;
+        } = index_localities(localities, &locality_province)?;
 
         let MunicipalityMap {
             municipality_names,

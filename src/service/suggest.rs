@@ -1,12 +1,14 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::database::DatabaseHandle;
 
 use super::{Response, json_error, json_list};
 
-/// Handle the `/suggest` endpoint by returning locality suggestions for the `wp` query param.
+/// Handle the `/suggest` endpoint by returning locality and municipality suggestions
+/// for the `match` query param (or the legacy `wp` alias).
 pub(crate) fn handle_suggest(database: &DatabaseHandle, query: &str) -> Response {
     let mut query_text = None;
+    let mut legacy_text = None;
 
     for pair in query.split('&') {
         if pair.is_empty() {
@@ -15,40 +17,53 @@ pub(crate) fn handle_suggest(database: &DatabaseHandle, query: &str) -> Response
         let Some((key, value)) = pair.split_once('=') else {
             continue;
         };
-        if key == "wp" {
+        if key == "match" {
             query_text = Some(value.to_string());
+        } else if key == "wp" {
+            legacy_text = Some(value.to_string());
         }
     }
 
-    let Some(query_text) = query_text else {
-        return Response::new(400, json_error("missing wp"));
+    let Some(query_text) = query_text.or(legacy_text) else {
+        return Response::new(400, json_error("missing match"));
     };
 
-    let suggestions = suggest_localities(database, &query_text);
+    let suggestions = suggest_places(database, &query_text);
     let body = json_list(&suggestions);
     Response::new(200, body)
 }
 
-/// Suggest localities using a light-weight fuzzy ranking:
+/// Suggest localities and municipalities using a light-weight fuzzy ranking:
 /// - Fast substring match gets a top score boost.
 /// - Otherwise combine subsequence coverage with bigram similarity.
 /// - Ignore candidates that end up with a score below the threshold value.
+/// - Dedup exact string matches so a name shared by a locality and municipality appears once.
 /// - Return at most 10 highest scored matches.
 const DEFAULT_SUGGEST_THRESHOLD: f32 = 0.7;
 
-fn suggest_localities(database: &DatabaseHandle, query: &str) -> Vec<String> {
+fn suggest_places(database: &DatabaseHandle, query: &str) -> Vec<String> {
     let threshold = suggest_threshold();
     let normalized = normalize_query(query);
     if normalized.is_empty() {
         return Vec::new();
     }
 
-    let mut scored = Vec::new();
-    for locality in database.localities() {
-        let candidate = normalize_query(locality);
+    let mut scored: Vec<(f32, String)> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+
+    for name in database.localities() {
+        let candidate = normalize_query(name);
         let score = fuzzy_score(&normalized, &candidate);
-        if score >= threshold {
-            scored.push((score, locality));
+        if score >= threshold && seen.insert(name.to_string()) {
+            scored.push((score, name.to_string()));
+        }
+    }
+
+    for (name, _, _) in database.municipality_details() {
+        let candidate = normalize_query(name);
+        let score = fuzzy_score(&normalized, &candidate);
+        if score >= threshold && seen.insert(name.to_string()) {
+            scored.push((score, name.to_string()));
         }
     }
 
@@ -59,11 +74,7 @@ fn suggest_localities(database: &DatabaseHandle, query: &str) -> Vec<String> {
             .then_with(|| a_name.cmp(b_name))
     });
 
-    scored
-        .into_iter()
-        .take(10)
-        .map(|(_, locality)| locality.to_string())
-        .collect()
+    scored.into_iter().take(10).map(|(_, name)| name).collect()
 }
 
 /// Normalize user input and candidates for case-insensitive matching.
@@ -83,8 +94,9 @@ fn suggest_threshold() -> f32 {
 /// Compute a fuzzy score between the search `needle` and a candidate `haystack`.
 ///
 /// Algorithm details:
-/// - Substring boost: if `haystack` contains `needle`, return `1.0 + len(needle)/len(haystack)`.
-///   This prioritizes contiguous matches while keeping longer exacts slightly below shorter perfects.
+/// - Substring boost: if `haystack` contains `needle`, return `1.0 + len(needle)/len(haystack)`,
+///   plus an extra `0.5` when `haystack` starts with `needle` so prefix matches rank above
+///   mid-string matches in shorter candidates.
 /// - Otherwise compute:
 ///   - `subsequence_ratio`: fraction of `needle` characters found in order within `haystack`.
 ///   - `dice_coefficient`: bigram overlap similarity for approximate string shape matching.
@@ -97,7 +109,12 @@ fn fuzzy_score(needle: &str, haystack: &str) -> f32 {
 
     if haystack.contains(needle) {
         let ratio = needle.chars().count() as f32 / haystack.chars().count() as f32;
-        return 1.0 + ratio.min(1.0);
+        let prefix_bonus = if haystack.starts_with(needle) {
+            0.5
+        } else {
+            0.0
+        };
+        return 1.0 + ratio.min(1.0) + prefix_bonus;
     }
 
     let subsequence = subsequence_ratio(needle, haystack);
@@ -203,6 +220,18 @@ mod tests {
     }
 
     #[test]
+    fn fuzzy_score_boosts_prefix_matches() {
+        let needle = normalize_query("land");
+        let prefix = normalize_query("land van cuijk");
+        let midword = normalize_query("ameland");
+
+        let prefix_score = fuzzy_score(&needle, &prefix);
+        let midword_score = fuzzy_score(&needle, &midword);
+
+        assert!(prefix_score > midword_score);
+    }
+
+    #[test]
     fn subsequence_ratio_respects_order() {
         let needle = normalize_query("ams");
         let in_order = normalize_query("amsterdam");
@@ -228,6 +257,51 @@ mod tests {
     async fn suggest_success() {
         let db = Arc::new(test_database());
         let response = send_request(
+            "GET /suggest?match=Amster HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            db,
+        )
+        .await;
+
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        assert!(response.contains("[\"Amsterdam\""));
+    }
+
+    #[tokio::test]
+    async fn suggest_includes_municipalities() {
+        use super::super::test_utils::disambiguated_test_database;
+        let db = Arc::new(disambiguated_test_database());
+        let response = send_request(
+            "GET /suggest?match=Bronck HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            db,
+        )
+        .await;
+
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        assert!(response.contains("\"Bronckhorst\""));
+    }
+
+    #[tokio::test]
+    async fn suggest_dedups_locality_and_municipality_sharing_a_name() {
+        use super::super::test_utils::disambiguated_test_database;
+        let db = Arc::new(disambiguated_test_database());
+        let response = send_request(
+            "GET /suggest?match=Amster HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            db,
+        )
+        .await;
+
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        let occurrences = response.matches("\"Amsterdam\"").count();
+        assert_eq!(
+            occurrences, 1,
+            "expected single Amsterdam entry, got {occurrences}"
+        );
+    }
+
+    #[tokio::test]
+    async fn suggest_accepts_legacy_wp_param() {
+        let db = Arc::new(test_database());
+        let response = send_request(
             "GET /suggest?wp=Amster HTTP/1.1\r\nHost: localhost\r\n\r\n",
             db,
         )
@@ -243,6 +317,6 @@ mod tests {
         let response = send_request("GET /suggest HTTP/1.1\r\nHost: localhost\r\n\r\n", db).await;
 
         assert!(response.starts_with("HTTP/1.1 400 Bad Request"));
-        assert!(response.contains("{\"error\":\"missing wp\"}"));
+        assert!(response.contains("{\"error\":\"missing match\"}"));
     }
 }

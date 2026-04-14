@@ -43,10 +43,10 @@ Example response:
 {"pr":"Street Name","wp":"Locality"}
 ```
 
-Suggest localities by prefix or fuzzy match:
+Suggest localities and municipalities by prefix or fuzzy match:
 
 ```sh
-curl "http://127.0.0.1:8080/suggest?wp=Amster"
+curl "http://127.0.0.1:8080/suggest?match=Amster"
 ```
 
 Example response:
@@ -55,10 +55,12 @@ Example response:
 ["Amsterdam","Amstelveen"]
 ```
 
-If the `wp` query param is missing, the service responds with `400` and:
+The legacy `wp` query param is still accepted as an alias for `match`.
+
+If the `match` query param is missing, the service responds with `400` and:
 
 ```json
-{"error":"missing wp"}
+{"error":"missing match"}
 ```
 
 List all localities with their municipality:

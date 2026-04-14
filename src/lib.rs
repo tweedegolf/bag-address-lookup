@@ -30,6 +30,6 @@ pub use parsing::MunicipalityRelation;
 
 #[cfg(feature = "create")]
 pub use transform::{
-    LocalityMap, MunicipalityMap, encode_addresses, index_localities, index_municipalities,
-    index_public_spaces,
+    LocalityMap, MunicipalityMap, build_locality_province_map, encode_addresses, index_localities,
+    index_municipalities, index_public_spaces, province_abbreviation,
 };

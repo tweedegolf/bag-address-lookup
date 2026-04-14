@@ -318,6 +318,52 @@ pub(crate) mod test_utils {
         })
     }
 
+    /// Test database with two like-named localities in different provinces,
+    /// exercising the province-suffix disambiguation.
+    pub(crate) fn disambiguated_test_database() -> DatabaseHandle {
+        let localities = vec![
+            "Amsterdam".to_string(),
+            "Hengelo (GE)".to_string(),
+            "Hengelo (OV)".to_string(),
+        ];
+        let public_spaces = vec!["Stationsstraat".to_string()];
+        let ranges = vec![NumberRange {
+            postal_code: encode_pc(b"1234AB"),
+            start: 10,
+            length: 0,
+            public_space_index: 0,
+            locality_index: 0,
+            step: 1,
+        }];
+
+        let municipalities = vec![
+            "Amsterdam".to_string(),
+            "Bronckhorst".to_string(),
+            "Hengelo".to_string(),
+        ];
+        let provinces = vec![
+            "Gelderland".to_string(),
+            "Noord-Holland".to_string(),
+            "Overijssel".to_string(),
+        ];
+        let municipality_codes = vec![363, 1876, 164];
+        // Amsterdam->Amsterdam, Hengelo (GE)->Bronckhorst, Hengelo (OV)->Hengelo
+        let locality_municipality = vec![0, 1, 2];
+        // Amsterdam->NH, Bronckhorst->GE, Hengelo->OV
+        let municipality_province = vec![1, 0, 2];
+
+        DatabaseHandle::Decoded(Database {
+            localities,
+            public_spaces,
+            ranges,
+            municipalities,
+            provinces,
+            municipality_codes,
+            locality_municipality,
+            municipality_province,
+        })
+    }
+
     pub(crate) async fn send_request(request: &str, db: Arc<DatabaseHandle>) -> String {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
