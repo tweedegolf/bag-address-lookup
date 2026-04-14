@@ -129,14 +129,45 @@ pub fn index_municipalities(
     locality_map: &HashMap<u16, u16>,
     locality_count: usize,
 ) -> Result<MunicipalityMap, Box<dyn Error>> {
-    // Build CBS lookup: gemeente_code -> (name, province)
+    // CBS now feeds us names with the upstream suffix already stripped
+    // (e.g. "Bergen", "Hengelo"). Re-add a canonical "(NH)" / "(OV)" only when
+    // the bare name occurs in multiple provinces, so distinct municipalities
+    // (e.g. Bergen in NH and LI) stay separable.
+    let mut name_provinces: HashMap<&str, HashSet<&str>> = HashMap::new();
+    for m in cbs_municipalities {
+        name_provinces
+            .entry(m.name.as_str())
+            .or_default()
+            .insert(m.province.as_str());
+    }
+    let display_for = |m: &Municipality| -> String {
+        if name_provinces
+            .get(m.name.as_str())
+            .is_some_and(|set| set.len() > 1)
+        {
+            format!("{} ({})", m.name, province_abbreviation(&m.province))
+        } else {
+            m.name.clone()
+        }
+    };
+    let mut display_by_code: HashMap<u16, String> =
+        HashMap::with_capacity(cbs_municipalities.len());
+    for m in cbs_municipalities {
+        display_by_code.insert(m.code, display_for(m));
+    }
+
+    // Build CBS lookup: gemeente_code -> (display_name, province)
     let mut cbs_lookup: HashMap<u16, (&str, &str)> =
         HashMap::with_capacity(cbs_municipalities.len());
     for m in cbs_municipalities {
-        cbs_lookup.insert(m.code, (&m.name, &m.province));
+        let display = display_by_code
+            .get(&m.code)
+            .expect("display name for code")
+            .as_str();
+        cbs_lookup.insert(m.code, (display, m.province.as_str()));
     }
 
-    // Build locality_id -> (municipality_name, province_name) from GWR + CBS
+    // Build locality_id -> (municipality_display_name, province_name) from GWR + CBS
     let mut locality_to_municipality: HashMap<u16, (&str, &str)> =
         HashMap::with_capacity(relations.len());
     for rel in &relations {
@@ -183,7 +214,11 @@ pub fn index_municipalities(
     // Build municipality_codes: for each municipality_index, the CBS code
     let mut municipality_codes = vec![0u16; municipality_names.len()];
     for m in cbs_municipalities {
-        if let Some(&idx) = municipality_name_index.get(m.name.as_str()) {
+        let display = display_by_code
+            .get(&m.code)
+            .expect("display name for code")
+            .as_str();
+        if let Some(&idx) = municipality_name_index.get(display) {
             municipality_codes[idx as usize] = m.code;
         }
     }
@@ -191,7 +226,11 @@ pub fn index_municipalities(
     // Build municipality_province: for each municipality_index, the province_index
     let mut municipality_province = vec![0u8; municipality_names.len()];
     for m in cbs_municipalities {
-        if let Some(&m_idx) = municipality_name_index.get(m.name.as_str()) {
+        let display = display_by_code
+            .get(&m.code)
+            .expect("display name for code")
+            .as_str();
+        if let Some(&m_idx) = municipality_name_index.get(display) {
             if let Some(&p_idx) = province_name_index.get(m.province.as_str()) {
                 municipality_province[m_idx as usize] = p_idx;
             }
@@ -361,7 +400,10 @@ struct EncodedEntry {
 mod tests {
     use std::collections::HashMap;
 
-    use super::{LocalityMap, encode_addresses, index_localities, index_public_spaces};
+    use super::{
+        LocalityMap, encode_addresses, index_localities, index_municipalities, index_public_spaces,
+    };
+    use crate::parsing::{MunicipalityRelation, municipalities::Municipality};
     use crate::{Address, Locality, NumberRange, PublicSpace, encode_pc};
 
     fn locality_map_fixture() -> LocalityMap {
@@ -460,6 +502,64 @@ mod tests {
         assert_eq!(result.locality_names, vec!["Hengelo"]);
         assert_eq!(result.locality_map.get(&1), Some(&0));
         assert_eq!(result.locality_map.get(&2), Some(&0));
+    }
+
+    #[test]
+    fn index_municipalities_disambiguates_collisions_across_provinces() {
+        // Two distinct CBS municipalities both named "Bergen" (in Limburg and
+        // Noord-Holland) plus a unique "Hengelo" in Overijssel.
+        let cbs = vec![
+            Municipality {
+                code: 893,
+                name: "Bergen".to_string(),
+                province: "Limburg".to_string(),
+            },
+            Municipality {
+                code: 373,
+                name: "Bergen".to_string(),
+                province: "Noord-Holland".to_string(),
+            },
+            Municipality {
+                code: 164,
+                name: "Hengelo".to_string(),
+                province: "Overijssel".to_string(),
+            },
+        ];
+        let relations = vec![
+            MunicipalityRelation {
+                locality_id: 1,
+                municipality_code: 893,
+            },
+            MunicipalityRelation {
+                locality_id: 2,
+                municipality_code: 373,
+            },
+            MunicipalityRelation {
+                locality_id: 3,
+                municipality_code: 164,
+            },
+        ];
+        let mut locality_map = HashMap::new();
+        locality_map.insert(1u16, 0u16);
+        locality_map.insert(2u16, 1u16);
+        locality_map.insert(3u16, 2u16);
+
+        let result = index_municipalities(relations, &cbs, &locality_map, 3)
+            .expect("municipality disambiguation");
+
+        assert_eq!(
+            result.municipality_names,
+            vec!["Bergen (LI)", "Bergen (NH)", "Hengelo"]
+        );
+        // Locality 1 (Limburg Bergen) should map to "Bergen (LI)" at index 0
+        assert_eq!(result.locality_municipality[0], 0);
+        assert_eq!(result.municipality_codes[0], 893);
+        // Locality 2 (NH Bergen) should map to "Bergen (NH)" at index 1
+        assert_eq!(result.locality_municipality[1], 1);
+        assert_eq!(result.municipality_codes[1], 373);
+        // Locality 3 (Hengelo) keeps its bare name at index 2
+        assert_eq!(result.locality_municipality[2], 2);
+        assert_eq!(result.municipality_codes[2], 164);
     }
 
     #[test]

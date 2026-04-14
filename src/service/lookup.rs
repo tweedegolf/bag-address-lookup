@@ -73,6 +73,20 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn lookup_returns_province_suffix_for_ambiguous_locality() {
+        use super::super::test_utils::disambiguated_test_database;
+        let db = Arc::new(disambiguated_test_database());
+        let response = send_request(
+            "GET /lookup?pc=7550AA&n=1 HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            db,
+        )
+        .await;
+
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        assert!(response.contains("{\"pr\":\"Stationsstraat\",\"wp\":\"Hengelo (OV)\"}"));
+    }
+
+    #[tokio::test]
     async fn lookup_missing_postal_code() {
         let db = Arc::new(test_database());
         let response =

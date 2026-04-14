@@ -211,7 +211,7 @@ cargo build --release --bin bag-service --no-default-features
 The [BAG](https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bag) (Basisregistratie
 Adressen en Gebouwen) is the Dutch national registry for addresses and buildings, maintained by
 Kadaster. The full extract is published as a ZIP containing nested ZIPs with XML files following the
-[StUF](https://www.gemmaonline.nl/index.php/StUF_Berichtenstandaard) exchange format.
+[StUF](https://standaarden.vng.nl/StUF-standaarden) exchange format.
 
 The [BAG catalog](https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bag/catalogus-bag)
 describes all object types and their attributes. This project uses three object types

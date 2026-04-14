@@ -327,14 +327,24 @@ pub(crate) mod test_utils {
             "Hengelo (OV)".to_string(),
         ];
         let public_spaces = vec!["Stationsstraat".to_string()];
-        let ranges = vec![NumberRange {
-            postal_code: encode_pc(b"1234AB"),
-            start: 10,
-            length: 0,
-            public_space_index: 0,
-            locality_index: 0,
-            step: 1,
-        }];
+        let ranges = vec![
+            NumberRange {
+                postal_code: encode_pc(b"1234AB"),
+                start: 10,
+                length: 0,
+                public_space_index: 0,
+                locality_index: 0,
+                step: 1,
+            },
+            NumberRange {
+                postal_code: encode_pc(b"7550AA"),
+                start: 1,
+                length: 0,
+                public_space_index: 0,
+                locality_index: 2,
+                step: 1,
+            },
+        ];
 
         let municipalities = vec![
             "Amsterdam".to_string(),

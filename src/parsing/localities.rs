@@ -8,6 +8,7 @@ use std::io::BufRead;
 
 use quick_xml::{events::Event, reader::Reader};
 
+use super::province_suffix::strip_province_suffix;
 use super::xml_utils::read_simple_tag;
 
 const WP_TAG: &[u8] = b"Objecten:Woonplaats";
@@ -66,7 +67,7 @@ fn parse_woonplaats<B: BufRead>(
             }
             Event::Start(e) if e.name().as_ref() == NAME_TAG => {
                 if let Some(value) = read_simple_tag(reader, NAME_TAG, buf)? {
-                    name = Some(value);
+                    name = Some(strip_province_suffix(&value).to_owned());
                 }
             }
             Event::Start(e) if e.name().as_ref() == END_VALIDITY_TAG => {

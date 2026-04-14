@@ -2,6 +2,7 @@ mod addresses;
 mod localities;
 pub mod municipalities;
 mod municipality_relations;
+mod province_suffix;
 mod public_spaces;
 mod xml_utils;
 

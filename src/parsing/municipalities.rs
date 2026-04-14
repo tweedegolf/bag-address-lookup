@@ -10,6 +10,7 @@ use std::{
     time::Instant,
 };
 
+use super::province_suffix::strip_province_suffix;
 use crate::log_with_elapsed;
 
 static CBS_TABLE_ID_FALLBACK: &str = "86247NED";
@@ -118,11 +119,11 @@ fn parse_cbs_json(path: &Path) -> Result<Vec<Municipality>, Box<dyn Error>> {
             .strip_prefix("GM")
             .ok_or_else(|| format!("CBS JSON: expected GM prefix in '{code_str}'"))?
             .parse()?;
-        let name = entry["Naam_2"]
+        let raw_name = entry["Naam_2"]
             .as_str()
             .ok_or("CBS JSON: missing Naam_2")?
-            .trim()
-            .to_string();
+            .trim();
+        let name = strip_province_suffix(raw_name).to_string();
         let province = entry["Naam_29"]
             .as_str()
             .ok_or("CBS JSON: missing Naam_29")?
