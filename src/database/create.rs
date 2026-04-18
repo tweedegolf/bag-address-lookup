@@ -19,6 +19,8 @@ impl Database {
 
         let LocalityMap {
             locality_names,
+            locality_codes,
+            locality_had_suffix,
             locality_map,
         } = index_localities(localities)?;
 
@@ -26,6 +28,7 @@ impl Database {
             municipality_names,
             province_names,
             municipality_codes,
+            municipality_had_suffix,
             locality_municipality,
             municipality_province,
         } = index_municipalities(
@@ -40,6 +43,7 @@ impl Database {
 
         Ok(Database {
             localities: locality_names,
+            locality_codes,
             public_spaces: pc_names,
             ranges,
             municipalities: municipality_names,
@@ -47,6 +51,8 @@ impl Database {
             municipality_codes,
             locality_municipality,
             municipality_province,
+            locality_had_suffix,
+            municipality_had_suffix,
         })
     }
 }

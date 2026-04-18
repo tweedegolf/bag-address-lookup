@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use crate::database::DatabaseHandle;
 
-use super::{Response, json_error, json_list};
+use super::{Response, json_error};
 
-/// Handle the `/suggest` endpoint by returning locality suggestions for the `wp` query param.
+/// Handle the `/suggest` endpoint by returning locality and municipality
+/// suggestions for the `wp` query param.
 pub(crate) fn handle_suggest(database: &DatabaseHandle, query: &str) -> Response {
     let mut query_text = None;
 
@@ -24,46 +25,146 @@ pub(crate) fn handle_suggest(database: &DatabaseHandle, query: &str) -> Response
         return Response::new(400, json_error("missing wp"));
     };
 
-    let suggestions = suggest_localities(database, &query_text);
-    let body = json_list(&suggestions);
-    Response::new(200, body)
+    Response::new(200, suggest_json(database, &query_text))
 }
 
-/// Suggest localities using a light-weight fuzzy ranking:
+/// Suggest localities and municipalities using a light-weight fuzzy ranking:
 /// - Fast substring match gets a top score boost.
 /// - Otherwise combine subsequence coverage with bigram similarity.
 /// - Ignore candidates that end up with a score below the threshold value.
-/// - Return at most 10 highest scored matches.
+/// - Return at most 10 highest scored matches mixed across both sources.
 const DEFAULT_SUGGEST_THRESHOLD: f32 = 0.7;
 
-fn suggest_localities(database: &DatabaseHandle, query: &str) -> Vec<String> {
-    let threshold = suggest_threshold();
-    let normalized = normalize_query(query);
-    if normalized.is_empty() {
-        return Vec::new();
-    }
+/// A scored suggestion entry, rendered with the same shape as the
+/// `/localities` or `/municipalities` list endpoints.
+enum Entry {
+    Locality {
+        wp: String,
+        wp_code: u16,
+        gm: String,
+        gm_code: u16,
+        pv: String,
+        unique: bool,
+        had_suffix: bool,
+    },
+    Municipality {
+        gm: String,
+        gm_code: u16,
+        pv: String,
+        unique: bool,
+        had_suffix: bool,
+    },
+}
 
-    let mut scored = Vec::new();
-    for locality in database.localities() {
-        let candidate = normalize_query(locality);
-        let score = fuzzy_score(&normalized, &candidate);
-        if score >= threshold {
-            scored.push((score, locality));
+impl Entry {
+    fn name(&self) -> &str {
+        match self {
+            Entry::Locality { wp, .. } => wp,
+            Entry::Municipality { gm, .. } => gm,
         }
     }
 
-    scored.sort_by(|(a_score, a_name), (b_score, b_name)| {
+    fn append_json(&self, body: &mut String) {
+        match self {
+            Entry::Locality {
+                wp,
+                wp_code,
+                gm,
+                gm_code,
+                pv,
+                unique,
+                had_suffix,
+            } => {
+                body.push_str(&format!(
+                    "{{\"wp\":{},\"wp_code\":{},\"gm\":{},\"gm_code\":{},\"pv\":{},\"unique\":{},\"had_suffix\":{}}}",
+                    serde_json::to_string(wp).expect("serialize wp"),
+                    wp_code,
+                    serde_json::to_string(gm).expect("serialize gm"),
+                    gm_code,
+                    serde_json::to_string(pv).expect("serialize pv"),
+                    unique,
+                    had_suffix,
+                ));
+            }
+            Entry::Municipality {
+                gm,
+                gm_code,
+                pv,
+                unique,
+                had_suffix,
+            } => {
+                body.push_str(&format!(
+                    "{{\"gm\":{},\"gm_code\":{},\"pv\":{},\"unique\":{},\"had_suffix\":{}}}",
+                    serde_json::to_string(gm).expect("serialize gm"),
+                    gm_code,
+                    serde_json::to_string(pv).expect("serialize pv"),
+                    unique,
+                    had_suffix,
+                ));
+            }
+        }
+    }
+}
+
+fn suggest_json(database: &DatabaseHandle, query: &str) -> String {
+    let threshold = suggest_threshold();
+    let normalized = normalize_query(query);
+    if normalized.is_empty() {
+        return String::from("[]");
+    }
+
+    let mut scored: Vec<(f32, Entry)> = Vec::new();
+
+    for (wp, wp_code, gm, gm_code, pv, unique, had_suffix) in database.locality_details() {
+        let score = fuzzy_score(&normalized, &normalize_query(wp));
+        if score >= threshold {
+            scored.push((
+                score,
+                Entry::Locality {
+                    wp: wp.to_string(),
+                    wp_code,
+                    gm: gm.to_string(),
+                    gm_code,
+                    pv: pv.to_string(),
+                    unique,
+                    had_suffix,
+                },
+            ));
+        }
+    }
+
+    for (gm, gm_code, pv, unique, had_suffix) in database.municipality_details() {
+        let score = fuzzy_score(&normalized, &normalize_query(gm));
+        if score >= threshold {
+            scored.push((
+                score,
+                Entry::Municipality {
+                    gm: gm.to_string(),
+                    gm_code,
+                    pv: pv.to_string(),
+                    unique,
+                    had_suffix,
+                },
+            ));
+        }
+    }
+
+    scored.sort_by(|(a_score, a_entry), (b_score, b_entry)| {
         b_score
             .partial_cmp(a_score)
             .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a_name.cmp(b_name))
+            .then_with(|| a_entry.name().cmp(b_entry.name()))
     });
 
-    scored
-        .into_iter()
-        .take(10)
-        .map(|(_, locality)| locality.to_string())
-        .collect()
+    let mut body = String::from("[");
+    for (i, (_, entry)) in scored.iter().take(10).enumerate() {
+        if i > 0 {
+            body.push(',');
+        }
+        entry.append_json(&mut body);
+    }
+    body.push(']');
+    body
 }
 
 /// Normalize user input and candidates for case-insensitive matching.
@@ -234,7 +335,11 @@ mod tests {
         .await;
 
         assert!(response.starts_with("HTTP/1.1 200 OK"));
-        assert!(response.contains("[\"Amsterdam\""));
+        assert!(response.contains("\"wp\":\"Amsterdam\""));
+        assert!(response.contains("\"wp_code\":"));
+        assert!(response.contains("\"gm\":\"Amsterdam\""));
+        assert!(response.contains("\"gm_code\":"));
+        assert!(response.contains("\"pv\":"));
     }
 
     #[tokio::test]

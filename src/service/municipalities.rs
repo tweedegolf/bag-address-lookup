@@ -6,15 +6,17 @@ use super::Response;
 pub(crate) fn handle_municipalities(database: &DatabaseHandle) -> Response {
     let details = database.municipality_details();
     let mut body = String::from("[");
-    for (i, (gm, gm_code, pv)) in details.iter().enumerate() {
+    for (i, (gm, gm_code, pv, unique, had_suffix)) in details.iter().enumerate() {
         if i > 0 {
             body.push(',');
         }
         body.push_str(&format!(
-            "{{\"gm\":{},\"gm_code\":{},\"pv\":{}}}",
+            "{{\"gm\":{},\"gm_code\":{},\"pv\":{},\"unique\":{},\"had_suffix\":{}}}",
             serde_json::to_string(gm).expect("serialize gm"),
             gm_code,
             serde_json::to_string(pv).expect("serialize pv"),
+            unique,
+            had_suffix,
         ));
     }
     body.push(']');
@@ -39,5 +41,7 @@ mod tests {
         assert!(response.contains("\"gm\":"));
         assert!(response.contains("\"pv\":"));
         assert!(response.contains("\"gm_code\":"));
+        assert!(response.contains("\"unique\":"));
+        assert!(response.contains("\"had_suffix\":"));
     }
 }

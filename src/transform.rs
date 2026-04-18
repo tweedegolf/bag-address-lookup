@@ -7,36 +7,51 @@ use crate::{
 
 pub struct LocalityMap {
     pub locality_names: Vec<String>,
+    pub locality_codes: Vec<u16>,
+    /// Parallel to `locality_names`: true when the source name carried a
+    /// stripped province suffix (marker for non-unique reporting).
+    pub locality_had_suffix: Vec<bool>,
     pub locality_map: HashMap<u16, u16>,
 }
 
-/// Build stable locality name indexes and id mappings.
+/// Build stable locality indexes keyed by BAG woonplaatsidentificatiecode.
+///
+/// Entries are deduplicated on the BAG id (not the name), so that two
+/// Woonplaatsen sharing a name but differing in identificatiecode remain
+/// distinct. Sorting is lexicographic on (name, id) for stable output.
 pub fn index_localities(localities: Vec<Locality>) -> Result<LocalityMap, Box<dyn Error>> {
-    let mut locality_names: Vec<String> = localities
-        .iter()
-        .map(|locality| locality.name.clone())
-        .collect();
-    locality_names.sort();
-    locality_names.dedup();
+    let mut unique: HashMap<u16, (String, bool)> = HashMap::with_capacity(localities.len());
+    for locality in localities {
+        unique
+            .entry(locality.id)
+            .or_insert((locality.name, locality.had_suffix));
+    }
 
-    if locality_names.len() > u16::MAX as usize {
+    let mut entries: Vec<(String, u16, bool)> = unique
+        .into_iter()
+        .map(|(id, (name, had_suffix))| (name, id, had_suffix))
+        .collect();
+    entries.sort();
+
+    if entries.len() > u16::MAX as usize {
         return Err("too many localities for u16 index".into());
     }
 
-    let mut name_index = HashMap::with_capacity(locality_names.len());
-    for (index, name) in locality_names.iter().enumerate() {
-        name_index.insert(name.clone(), index as u16);
-    }
-
-    let mut locality_map = HashMap::with_capacity(localities.len());
-    for locality in localities {
-        if let Some(index) = name_index.get(&locality.name) {
-            locality_map.insert(locality.id, *index);
-        }
+    let mut locality_names = Vec::with_capacity(entries.len());
+    let mut locality_codes = Vec::with_capacity(entries.len());
+    let mut locality_had_suffix = Vec::with_capacity(entries.len());
+    let mut locality_map = HashMap::with_capacity(entries.len());
+    for (index, (name, id, had_suffix)) in entries.into_iter().enumerate() {
+        locality_map.insert(id, index as u16);
+        locality_names.push(name);
+        locality_codes.push(id);
+        locality_had_suffix.push(had_suffix);
     }
 
     Ok(LocalityMap {
         locality_names,
+        locality_codes,
+        locality_had_suffix,
         locality_map,
     })
 }
@@ -45,6 +60,9 @@ pub struct MunicipalityMap {
     pub municipality_names: Vec<String>,
     pub province_names: Vec<String>,
     pub municipality_codes: Vec<u16>,
+    /// Parallel to `municipality_names`: true when the CBS name carried a
+    /// stripped province suffix (marker for non-unique reporting).
+    pub municipality_had_suffix: Vec<bool>,
     /// For each locality (by sorted locality_index), the municipality_index.
     pub locality_municipality: Vec<u16>,
     /// For each municipality (by sorted municipality_index), the province_index.
@@ -58,45 +76,50 @@ pub fn index_municipalities(
     locality_map: &HashMap<u16, u16>,
     locality_count: usize,
 ) -> Result<MunicipalityMap, Box<dyn Error>> {
-    // Build CBS lookup: gemeente_code -> (name, province)
-    let mut cbs_lookup: HashMap<u16, (&str, &str)> =
+    // Build CBS lookup: gemeente_code -> (name, province, had_suffix)
+    let mut cbs_lookup: HashMap<u16, (&str, &str, bool)> =
         HashMap::with_capacity(cbs_municipalities.len());
     for m in cbs_municipalities {
-        cbs_lookup.insert(m.code, (&m.name, &m.province));
+        cbs_lookup.insert(m.code, (&m.name, &m.province, m.had_suffix));
     }
 
-    // Build locality_id -> (municipality_name, province_name) from GWR + CBS
-    let mut locality_to_municipality: HashMap<u16, (&str, &str)> =
-        HashMap::with_capacity(relations.len());
+    // Collect municipality codes reachable through locality relations.
+    let mut reachable: std::collections::BTreeSet<u16> = std::collections::BTreeSet::new();
     for rel in &relations {
-        if let Some(&(name, province)) = cbs_lookup.get(&rel.municipality_code) {
-            locality_to_municipality.insert(rel.locality_id, (name, province));
+        if cbs_lookup.contains_key(&rel.municipality_code) {
+            reachable.insert(rel.municipality_code);
         }
     }
 
-    // Collect and deduplicate municipality names (sorted)
-    let mut municipality_names: Vec<String> = locality_to_municipality
-        .values()
-        .map(|(name, _)| name.to_string())
+    // Sort by (name, code) for stable output; dedup by code so municipalities
+    // sharing a name (e.g. Bergen in NH and Limburg) remain distinct entries.
+    let mut entries: Vec<(&str, u16, &str, bool)> = reachable
+        .iter()
+        .map(|&code| {
+            let (name, prov, had_suffix) = cbs_lookup[&code];
+            (name, code, prov, had_suffix)
+        })
         .collect();
-    municipality_names.sort();
-    municipality_names.dedup();
+    entries.sort();
 
-    if municipality_names.len() > u16::MAX as usize {
+    if entries.len() > u16::MAX as usize {
         return Err("too many municipalities for u16 index".into());
     }
 
-    let mut municipality_name_index: HashMap<&str, u16> =
-        HashMap::with_capacity(municipality_names.len());
-    for (i, name) in municipality_names.iter().enumerate() {
-        municipality_name_index.insert(name, i as u16);
+    let mut municipality_names = Vec::with_capacity(entries.len());
+    let mut municipality_codes = Vec::with_capacity(entries.len());
+    let mut municipality_had_suffix = Vec::with_capacity(entries.len());
+    let mut code_to_index: HashMap<u16, u16> = HashMap::with_capacity(entries.len());
+    for (i, (name, code, _, had_suffix)) in entries.iter().enumerate() {
+        code_to_index.insert(*code, i as u16);
+        municipality_names.push((*name).to_string());
+        municipality_codes.push(*code);
+        municipality_had_suffix.push(*had_suffix);
     }
 
-    // Collect and deduplicate province names (sorted)
-    let mut province_names: Vec<String> = locality_to_municipality
-        .values()
-        .map(|(_, prov)| prov.to_string())
-        .collect();
+    // Collect and deduplicate province codes (sorted)
+    let mut province_names: Vec<String> =
+        entries.iter().map(|(_, _, p, _)| p.to_string()).collect();
     province_names.sort();
     province_names.dedup();
 
@@ -109,30 +132,20 @@ pub fn index_municipalities(
         province_name_index.insert(name, i as u8);
     }
 
-    // Build municipality_codes: for each municipality_index, the CBS code
-    let mut municipality_codes = vec![0u16; municipality_names.len()];
-    for m in cbs_municipalities {
-        if let Some(&idx) = municipality_name_index.get(m.name.as_str()) {
-            municipality_codes[idx as usize] = m.code;
-        }
-    }
-
     // Build municipality_province: for each municipality_index, the province_index
-    let mut municipality_province = vec![0u8; municipality_names.len()];
-    for m in cbs_municipalities {
-        if let Some(&m_idx) = municipality_name_index.get(m.name.as_str()) {
-            if let Some(&p_idx) = province_name_index.get(m.province.as_str()) {
-                municipality_province[m_idx as usize] = p_idx;
-            }
+    let mut municipality_province = vec![0u8; entries.len()];
+    for (i, (_, _, prov, _)) in entries.iter().enumerate() {
+        if let Some(&p_idx) = province_name_index.get(prov) {
+            municipality_province[i] = p_idx;
         }
     }
 
     // Build locality_municipality: for each locality_index, the municipality_index
     // Use u16::MAX as sentinel for localities without a known municipality
     let mut locality_municipality = vec![u16::MAX; locality_count];
-    for (locality_id, &locality_index) in locality_map {
-        if let Some(&(muni_name, _)) = locality_to_municipality.get(locality_id) {
-            if let Some(&m_idx) = municipality_name_index.get(muni_name) {
+    for rel in &relations {
+        if let Some(&locality_index) = locality_map.get(&rel.locality_id) {
+            if let Some(&m_idx) = code_to_index.get(&rel.municipality_code) {
                 locality_municipality[locality_index as usize] = m_idx;
             }
         }
@@ -142,20 +155,39 @@ pub fn index_municipalities(
         municipality_names,
         province_names,
         municipality_codes,
+        municipality_had_suffix,
         locality_municipality,
         municipality_province,
     })
 }
 
 /// Build public space name indexes and map ids to locality indexes.
+///
+/// Public spaces referencing a locality that isn't in `locality_map` are
+/// dropped — this happens when BAG keeps an issued street pointing to a
+/// Woonplaats whose active lifecycle has ended (e.g. after a municipality
+/// merger). We log the count so skew stays visible.
 pub fn index_public_spaces(
     public_spaces: Vec<PublicSpace>,
     locality_map: HashMap<u16, u16>,
 ) -> (Vec<String>, HashMap<String, (u32, u16)>) {
-    let mut public_space_names: Vec<String> = public_spaces
-        .iter()
-        .map(|public_space| public_space.name.clone())
-        .collect();
+    let mut kept: Vec<PublicSpace> = Vec::with_capacity(public_spaces.len());
+    let mut orphaned = 0usize;
+    for public_space in public_spaces {
+        if locality_map.contains_key(&public_space.locality_id) {
+            kept.push(public_space);
+        } else {
+            orphaned += 1;
+        }
+    }
+    if orphaned > 0 {
+        eprintln!(
+            "Warning: Dropped {orphaned} public space(s) referencing an unknown locality"
+        );
+    }
+
+    let mut public_space_names: Vec<String> =
+        kept.iter().map(|public_space| public_space.name.clone()).collect();
     public_space_names.sort();
     public_space_names.dedup();
 
@@ -164,8 +196,8 @@ pub fn index_public_spaces(
         name_index.insert(name.clone(), index as u32);
     }
 
-    let mut public_spaces_map = HashMap::with_capacity(public_spaces.len());
-    for public_space in public_spaces {
+    let mut public_spaces_map = HashMap::with_capacity(kept.len());
+    for public_space in kept {
         let public_space_index = *name_index
             .get(&public_space.name)
             .expect("Public space name not found in name index");
@@ -296,14 +328,17 @@ mod tests {
             Locality {
                 id: 10,
                 name: "Beta".to_string(),
+                had_suffix: false,
             },
             Locality {
                 id: 11,
                 name: "Alpha".to_string(),
+                had_suffix: false,
             },
             Locality {
                 id: 12,
                 name: "Alpha".to_string(),
+                had_suffix: false,
             },
         ];
 
@@ -311,13 +346,15 @@ mod tests {
     }
 
     #[test]
-    fn index_localities_sorts_and_dedups() {
+    fn index_localities_sorts_by_name_and_id() {
         let result = locality_map_fixture();
 
-        assert_eq!(result.locality_names, vec!["Alpha", "Beta"]);
-        assert_eq!(result.locality_map.get(&10), Some(&1));
+        // Two "Alpha" entries (ids 11, 12) remain distinct, sorted by id after name.
+        assert_eq!(result.locality_names, vec!["Alpha", "Alpha", "Beta"]);
+        assert_eq!(result.locality_codes, vec![11, 12, 10]);
         assert_eq!(result.locality_map.get(&11), Some(&0));
-        assert_eq!(result.locality_map.get(&12), Some(&0));
+        assert_eq!(result.locality_map.get(&12), Some(&1));
+        assert_eq!(result.locality_map.get(&10), Some(&2));
     }
 
     #[test]
@@ -326,6 +363,7 @@ mod tests {
             .map(|id| Locality {
                 id,
                 name: format!("L{id}"),
+                had_suffix: false,
             })
             .collect();
 
@@ -359,8 +397,8 @@ mod tests {
 
         assert_eq!(names, vec!["Hoofdweg", "Spoorstraat"]);
         assert_eq!(map.get("ps-1"), Some(&(0, 0)));
-        assert_eq!(map.get("ps-2"), Some(&(1, 1)));
-        assert_eq!(map.get("ps-3"), Some(&(1, 0)));
+        assert_eq!(map.get("ps-2"), Some(&(1, 2)));
+        assert_eq!(map.get("ps-3"), Some(&(1, 1)));
     }
 
     #[test]

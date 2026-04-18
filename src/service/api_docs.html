@@ -15,20 +15,29 @@ a{color:#0366d6}
 <tr><td><code>n</code></td><td>House number</td></tr></table>
 <p>Example: <a href="/lookup?pc=1234AB&n=10">/lookup?pc=1234AB&amp;n=10</a></p>
 <h2>GET /suggest</h2>
-<p>Suggest localities matching a prefix.</p>
+<p>Suggest localities and municipalities matching a query. Returns a JSON array
+mixing locality objects (same shape as <code>/localities</code>) and municipality
+objects (same shape as <code>/municipalities</code>); locality entries carry a
+<code>wp</code> field while municipality entries do not.</p>
 <table><tr><th>Param</th><th>Description</th></tr>
-<tr><td><code>wp</code></td><td>Locality name prefix</td></tr></table>
+<tr><td><code>wp</code></td><td>Locality or municipality name (prefix / fuzzy)</td></tr></table>
 <p>Example: <a href="/suggest?wp=Amst">/suggest?wp=Amst</a></p>
 <h2>GET /localities</h2>
 <p>List all localities. Returns a JSON array of objects:</p>
 <table><tr><th>Field</th><th>Description</th></tr>
 <tr><td><code>wp</code></td><td>Locality name</td></tr>
+<tr><td><code>wp_code</code></td><td>BAG woonplaatsidentificatiecode</td></tr>
 <tr><td><code>gm</code></td><td>Municipality name</td></tr>
-<tr><td><code>gm_code</code></td><td>Municipality code</td></tr></table>
+<tr><td><code>gm_code</code></td><td>Municipality code</td></tr>
+<tr><td><code>pv</code></td><td>Two-letter province code (e.g. NH, ZH)</td></tr>
+<tr><td><code>unique</code></td><td>True if the name is not shared with any other locality or municipality (a locality matching its own municipality's name does not count as a collision)</td></tr>
+<tr><td><code>had_suffix</code></td><td>True if the source BAG name carried a disambiguating province suffix that was stripped (e.g. <code>Loo Gld</code> → <code>Loo</code>). Always implies <code>unique: false</code>.</td></tr></table>
 <h2>GET /municipalities</h2>
 <p>List all municipalities. Returns a JSON array of objects:</p>
 <table><tr><th>Field</th><th>Description</th></tr>
 <tr><td><code>gm</code></td><td>Municipality name</td></tr>
 <tr><td><code>gm_code</code></td><td>Municipality code</td></tr>
-<tr><td><code>pv</code></td><td>Province name</td></tr></table>
+<tr><td><code>pv</code></td><td>Two-letter province code (e.g. NH, ZH)</td></tr>
+<tr><td><code>unique</code></td><td>True if the name is not shared with any other municipality or with any locality outside this municipality</td></tr>
+<tr><td><code>had_suffix</code></td><td>True if the CBS name carried a disambiguating province suffix that was stripped (e.g. <code>Hengelo (O.)</code> → <code>Hengelo</code>). Always implies <code>unique: false</code>.</td></tr></table>
 </body></html>

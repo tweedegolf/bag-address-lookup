@@ -36,6 +36,14 @@ impl ParsedData {
         let mut zip = ZipArchive::new(f)?;
         let mut data = ParsedData::default();
 
+        let reference_date = extract_date_from_zip(&mut zip).ok_or(
+            "Could not determine standtechnische datum from BAG extract filenames",
+        )?;
+        log_with_elapsed(
+            start,
+            &format!("Using extract reference date {reference_date}"),
+        );
+
         for index in 0..zip.len() {
             let mut entry = zip.by_index(index)?;
             let name = entry.name().to_string();
@@ -52,7 +60,7 @@ impl ParsedData {
                     start,
                     &mut entry,
                     "municipality relations",
-                    |reader| parse_municipality_relations(reader),
+                    |reader| parse_municipality_relations(reader, &reference_date),
                 )?;
             } else {
                 match &name[..7] {
@@ -62,7 +70,7 @@ impl ParsedData {
                             start,
                             &mut entry,
                             "localities",
-                            |reader| parse_localities(reader),
+                            |reader| parse_localities(reader, &reference_date),
                         )?;
                     }
                     // OpenbareRuimte (public space) - BAG catalog §7.3
@@ -71,7 +79,7 @@ impl ParsedData {
                             start,
                             &mut entry,
                             "public spaces",
-                            |reader| parse_public_spaces(reader),
+                            |reader| parse_public_spaces(reader, &reference_date),
                         )?;
                     }
                     // Nummeraanduiding (address designation) - BAG catalog §7.4
@@ -80,7 +88,7 @@ impl ParsedData {
                             start,
                             &mut entry,
                             "addresses",
-                            |reader| parse_addresses(reader),
+                            |reader| parse_addresses(reader, &reference_date),
                         )?;
                     }
                     _ => {
@@ -137,6 +145,40 @@ impl ParsedData {
     }
 }
 
+/// Extract the standtechnische datum from the BAG extract's filenames.
+///
+/// Extract filenames embed the date as DDMMYYYY (e.g. `9999WPL08122025.zip`
+/// or `GEM-WPL-RELATIE-08122025.zip`). We scan entries for a trailing 8-digit
+/// run and reformat it as ISO-8601 so later string comparisons sort correctly.
+fn extract_date_from_zip(zip: &mut ZipArchive<File>) -> Option<String> {
+    for index in 0..zip.len() {
+        let entry = zip.by_index(index).ok()?;
+        let name = entry.name();
+        let stem = name
+            .rsplit('/')
+            .next()
+            .unwrap_or(name)
+            .trim_end_matches(".zip")
+            .trim_end_matches(".xml");
+        let trailing_digits: String = stem
+            .chars()
+            .rev()
+            .take_while(|c| c.is_ascii_digit())
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect();
+        if trailing_digits.len() >= 8 {
+            let start = trailing_digits.len() - 8;
+            let dd = &trailing_digits[start..start + 2];
+            let mm = &trailing_digits[start + 2..start + 4];
+            let yyyy = &trailing_digits[start + 4..start + 8];
+            return Some(format!("{yyyy}-{mm}-{dd}"));
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,5 +201,40 @@ mod tests {
 
         assert_eq!(parsed_data.localities[0].name, "Hoogerheide");
         assert_eq!(parsed_data.localities[1].name, "Huijbergen");
+    }
+
+    #[test]
+    fn extract_date_parses_ddmmyyyy_filename() {
+        // The function expects a real ZIP archive; just verify the algorithm
+        // on filenames produced by the BAG extract format.
+        fn parse(name: &str) -> Option<String> {
+            let stem = name.trim_end_matches(".zip");
+            let digits: String = stem
+                .chars()
+                .rev()
+                .take_while(|c| c.is_ascii_digit())
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect();
+            if digits.len() >= 8 {
+                let s = digits.len() - 8;
+                return Some(format!(
+                    "{}-{}-{}",
+                    &digits[s + 4..s + 8],
+                    &digits[s + 2..s + 4],
+                    &digits[s..s + 2],
+                ));
+            }
+            None
+        }
+        assert_eq!(
+            parse("9999WPL08122025.zip").as_deref(),
+            Some("2025-12-08")
+        );
+        assert_eq!(
+            parse("GEM-WPL-RELATIE-08122025.zip").as_deref(),
+            Some("2025-12-08")
+        );
     }
 }

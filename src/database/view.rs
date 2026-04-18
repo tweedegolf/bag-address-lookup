@@ -179,6 +179,50 @@ impl DatabaseView {
             return Err(DatabaseError::InvalidLayout);
         }
 
+        // Validate locality codes
+        let expected_locality_codes_offset = header.expected_locality_codes_offset()?;
+        if header.locality_codes_offset != expected_locality_codes_offset {
+            return Err(DatabaseError::InvalidLayout);
+        }
+
+        let locality_codes_end = header
+            .locality_codes_offset
+            .checked_add(
+                (header.locality_count as usize)
+                    .checked_mul(2)
+                    .ok_or(DatabaseError::InvalidLayout)?,
+            )
+            .ok_or(DatabaseError::InvalidLayout)?;
+        if locality_codes_end > bytes.len() {
+            return Err(DatabaseError::InvalidLayout);
+        }
+
+        // Validate locality had_suffix array
+        let expected_loc_had_suffix_offset = header.expected_locality_had_suffix_offset()?;
+        if header.locality_had_suffix_offset != expected_loc_had_suffix_offset {
+            return Err(DatabaseError::InvalidLayout);
+        }
+        let locality_had_suffix_end = header
+            .locality_had_suffix_offset
+            .checked_add(header.locality_count as usize)
+            .ok_or(DatabaseError::InvalidLayout)?;
+        if locality_had_suffix_end > bytes.len() {
+            return Err(DatabaseError::InvalidLayout);
+        }
+
+        // Validate municipality had_suffix array
+        let expected_muni_had_suffix_offset = header.expected_municipality_had_suffix_offset()?;
+        if header.municipality_had_suffix_offset != expected_muni_had_suffix_offset {
+            return Err(DatabaseError::InvalidLayout);
+        }
+        let municipality_had_suffix_end = header
+            .municipality_had_suffix_offset
+            .checked_add(header.municipality_count as usize)
+            .ok_or(DatabaseError::InvalidLayout)?;
+        if municipality_had_suffix_end > bytes.len() {
+            return Err(DatabaseError::InvalidLayout);
+        }
+
         Ok(Self {
             bytes,
             locality_count: header.locality_count,
@@ -202,6 +246,9 @@ impl DatabaseView {
             locality_municipality_map_offset: header.locality_municipality_map_offset,
             municipality_province_map_offset: header.municipality_province_map_offset,
             municipality_codes_offset: header.municipality_codes_offset,
+            locality_codes_offset: header.locality_codes_offset,
+            locality_had_suffix_offset: header.locality_had_suffix_offset,
+            municipality_had_suffix_offset: header.municipality_had_suffix_offset,
         })
     }
 
@@ -305,7 +352,89 @@ impl DatabaseView {
         )
     }
 
-    pub(crate) fn locality_details(&self) -> Vec<(&'static str, &'static str, u16)> {
+    pub(crate) fn locality_code(&self, locality_index: u16) -> Option<u16> {
+        if (locality_index as u32) >= self.locality_count {
+            return None;
+        }
+        read_u16_bytes(
+            self.bytes,
+            self.locality_codes_offset + locality_index as usize * 2,
+        )
+    }
+
+    fn collect_locality_had_suffix(&self) -> Vec<bool> {
+        let mut out = Vec::with_capacity(self.locality_count as usize);
+        for i in 0..self.locality_count {
+            let b = self
+                .bytes
+                .get(self.locality_had_suffix_offset + i as usize)
+                .copied()
+                .unwrap_or(0);
+            out.push(b != 0);
+        }
+        out
+    }
+
+    fn collect_municipality_had_suffix(&self) -> Vec<bool> {
+        let mut out = Vec::with_capacity(self.municipality_count as usize);
+        for i in 0..self.municipality_count {
+            let b = self
+                .bytes
+                .get(self.municipality_had_suffix_offset + i as usize)
+                .copied()
+                .unwrap_or(0);
+            out.push(b != 0);
+        }
+        out
+    }
+
+    /// Collect locality names and their parent municipality indexes (u16::MAX = unknown).
+    fn collect_locality_names_and_parents(&self) -> (Vec<&'static str>, Vec<u16>) {
+        let mut names = Vec::with_capacity(self.locality_count as usize);
+        let mut parents = Vec::with_capacity(self.locality_count as usize);
+        for i in 0..self.locality_count {
+            let loc_idx = i as u16;
+            let name = self.locality_name(loc_idx).unwrap_or("");
+            let parent = self
+                .locality_municipality_index(loc_idx)
+                .unwrap_or(u16::MAX);
+            names.push(name);
+            parents.push(parent);
+        }
+        (names, parents)
+    }
+
+    fn collect_municipality_names(&self) -> Vec<&'static str> {
+        let mut names = Vec::with_capacity(self.municipality_count as usize);
+        for i in 0..self.municipality_count {
+            names.push(self.municipality_name(i as u16).unwrap_or(""));
+        }
+        names
+    }
+
+    pub(crate) fn locality_details(
+        &self,
+    ) -> Vec<(
+        &'static str,
+        u16,
+        &'static str,
+        u16,
+        &'static str,
+        bool,
+        bool,
+    )> {
+        let (locality_names, parents) = self.collect_locality_names_and_parents();
+        let muni_names = self.collect_municipality_names();
+        let loc_had_suffix = self.collect_locality_had_suffix();
+        let muni_had_suffix = self.collect_municipality_had_suffix();
+        let flags = super::util::compute_unique_flags(
+            &locality_names,
+            &muni_names,
+            &parents,
+            &loc_had_suffix,
+            &muni_had_suffix,
+        );
+
         let mut result = Vec::new();
         for i in 0..self.locality_count {
             let loc_idx = i as u16;
@@ -318,14 +447,37 @@ impl DatabaseView {
             if m_idx == u16::MAX {
                 continue;
             }
+            let wp_code = self.locality_code(loc_idx).unwrap_or(0);
             let m_name = self.municipality_name(m_idx).unwrap_or("");
             let m_code = self.municipality_code(m_idx).unwrap_or(0);
-            result.push((name, m_name, m_code));
+            let p_idx = self.municipality_province_index(m_idx).unwrap_or(u8::MAX);
+            let p_code = self.province_name(p_idx).unwrap_or("");
+            let unique = flags
+                .locality_unique
+                .get(i as usize)
+                .copied()
+                .unwrap_or(false);
+            let had_suffix = loc_had_suffix.get(i as usize).copied().unwrap_or(false);
+            result.push((name, wp_code, m_name, m_code, p_code, unique, had_suffix));
         }
         result
     }
 
-    pub(crate) fn municipality_details(&self) -> Vec<(&'static str, u16, &'static str)> {
+    pub(crate) fn municipality_details(
+        &self,
+    ) -> Vec<(&'static str, u16, &'static str, bool, bool)> {
+        let (locality_names, parents) = self.collect_locality_names_and_parents();
+        let muni_names = self.collect_municipality_names();
+        let loc_had_suffix = self.collect_locality_had_suffix();
+        let muni_had_suffix = self.collect_municipality_had_suffix();
+        let flags = super::util::compute_unique_flags(
+            &locality_names,
+            &muni_names,
+            &parents,
+            &loc_had_suffix,
+            &muni_had_suffix,
+        );
+
         let mut result = Vec::new();
         for i in 0..self.municipality_count {
             let m_idx = i as u16;
@@ -335,7 +487,13 @@ impl DatabaseView {
             let code = self.municipality_code(m_idx).unwrap_or(0);
             let p_idx = self.municipality_province_index(m_idx).unwrap_or(u8::MAX);
             let p_name = self.province_name(p_idx).unwrap_or("");
-            result.push((name, code, p_name));
+            let unique = flags
+                .municipality_unique
+                .get(i as usize)
+                .copied()
+                .unwrap_or(false);
+            let had_suffix = muni_had_suffix.get(i as usize).copied().unwrap_or(false);
+            result.push((name, code, p_name, unique, had_suffix));
         }
         result
     }

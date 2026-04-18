@@ -25,6 +25,9 @@ pub(crate) struct Header {
     pub(crate) locality_municipality_map_offset: usize,
     pub(crate) municipality_province_map_offset: usize,
     pub(crate) municipality_codes_offset: usize,
+    pub(crate) locality_codes_offset: usize,
+    pub(crate) locality_had_suffix_offset: usize,
+    pub(crate) municipality_had_suffix_offset: usize,
 }
 
 impl Header {
@@ -139,6 +142,34 @@ impl Header {
             .ok_or(DatabaseError::InvalidLayout)
     }
 
+    pub(crate) fn expected_locality_codes_offset(&self) -> Result<usize, DatabaseError> {
+        self.municipality_codes_offset
+            .checked_add(
+                (self.municipality_count as usize)
+                    .checked_mul(2)
+                    .ok_or(DatabaseError::InvalidLayout)?,
+            )
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
+    pub(crate) fn expected_locality_had_suffix_offset(&self) -> Result<usize, DatabaseError> {
+        self.locality_codes_offset
+            .checked_add(
+                (self.locality_count as usize)
+                    .checked_mul(2)
+                    .ok_or(DatabaseError::InvalidLayout)?,
+            )
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
+    pub(crate) fn expected_municipality_had_suffix_offset(
+        &self,
+    ) -> Result<usize, DatabaseError> {
+        self.locality_had_suffix_offset
+            .checked_add(self.locality_count as usize)
+            .ok_or(DatabaseError::InvalidLayout)
+    }
+
     pub(crate) fn from_reader<R: Read>(reader: &mut R) -> Result<Self, DatabaseError> {
         let mut magic = [0u8; 4];
         reader
@@ -167,6 +198,9 @@ impl Header {
         let locality_municipality_map_offset = read_u32_reader(reader)? as usize;
         let municipality_province_map_offset = read_u32_reader(reader)? as usize;
         let municipality_codes_offset = read_u32_reader(reader)? as usize;
+        let locality_codes_offset = read_u32_reader(reader)? as usize;
+        let locality_had_suffix_offset = read_u32_reader(reader)? as usize;
+        let municipality_had_suffix_offset = read_u32_reader(reader)? as usize;
 
         let header = Self {
             locality_count,
@@ -186,6 +220,9 @@ impl Header {
             locality_municipality_map_offset,
             municipality_province_map_offset,
             municipality_codes_offset,
+            locality_codes_offset,
+            locality_had_suffix_offset,
+            municipality_had_suffix_offset,
         };
 
         header.validate_base()?;

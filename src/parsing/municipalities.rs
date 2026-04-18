@@ -19,7 +19,53 @@ static CBS_PATH: &str = "data/municipalities.json";
 pub struct Municipality {
     pub code: u16,
     pub name: String,
+    /// Two-letter province code (e.g. "NH", "ZH", "UT").
     pub province: String,
+    /// True when the CBS name carried a disambiguating province suffix that
+    /// was stripped (e.g. `Hengelo (O.)`). CBS retains such suffixes because
+    /// the name has historically been ambiguous; we treat those entries as
+    /// not unique regardless of whether duplicates still exist today.
+    pub had_suffix: bool,
+}
+
+/// Remove the disambiguating province suffix appended to shared names.
+/// Handles both the CBS form with a trailing dot ("Hengelo (O.)", "Bergen (NH.)")
+/// and the BAG form without one ("Hengelo (Gld)").
+pub(crate) fn strip_province_suffix(name: &str) -> &str {
+    let Some(open) = name.rfind(" (") else {
+        return name;
+    };
+    let Some(stripped) = name.strip_suffix(')') else {
+        return name;
+    };
+    let inside = stripped[open + 2..].trim_end_matches('.');
+    if !inside.is_empty()
+        && inside.len() <= 3
+        && inside.chars().all(|c| c.is_ascii_alphabetic())
+    {
+        return name[..open].trim_end();
+    }
+    name
+}
+
+/// Map a CBS province name to its two-letter code.
+fn province_code(name: &str) -> String {
+    match name {
+        "Drenthe" => "DR",
+        "Flevoland" => "FL",
+        "Fryslân" | "Friesland" => "FR",
+        "Gelderland" => "GE",
+        "Groningen" => "GR",
+        "Limburg" => "LI",
+        "Noord-Brabant" => "NB",
+        "Noord-Holland" => "NH",
+        "Overijssel" => "OV",
+        "Utrecht" => "UT",
+        "Zeeland" => "ZE",
+        "Zuid-Holland" => "ZH",
+        _ => return name.to_string(),
+    }
+    .to_string()
 }
 
 /// Download (if needed) and parse CBS municipality data.
@@ -118,23 +164,58 @@ fn parse_cbs_json(path: &Path) -> Result<Vec<Municipality>, Box<dyn Error>> {
             .strip_prefix("GM")
             .ok_or_else(|| format!("CBS JSON: expected GM prefix in '{code_str}'"))?
             .parse()?;
-        let name = entry["Naam_2"]
+        let raw_name = entry["Naam_2"]
             .as_str()
             .ok_or("CBS JSON: missing Naam_2")?
-            .trim()
-            .to_string();
-        let province = entry["Naam_29"]
+            .trim();
+        let stripped = strip_province_suffix(raw_name);
+        let had_suffix = stripped != raw_name;
+        if had_suffix {
+            eprintln!(
+                "Warning: Stripped province suffix from municipality '{raw_name}' -> '{stripped}'"
+            );
+        }
+        let name = stripped.to_string();
+        let province_name = entry["Naam_29"]
             .as_str()
             .ok_or("CBS JSON: missing Naam_29")?
-            .trim()
-            .to_string();
+            .trim();
+        let province = province_code(province_name);
 
         municipalities.push(Municipality {
             code,
             name,
             province,
+            had_suffix,
         });
     }
 
     Ok(municipalities)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::strip_province_suffix;
+
+    #[test]
+    fn strips_cbs_dotted_suffixes() {
+        assert_eq!(strip_province_suffix("Hengelo (O.)"), "Hengelo");
+        assert_eq!(strip_province_suffix("Bergen (NH.)"), "Bergen");
+        assert_eq!(strip_province_suffix("Bergen (L.)"), "Bergen");
+    }
+
+    #[test]
+    fn strips_bag_dotless_suffixes() {
+        assert_eq!(strip_province_suffix("Hengelo (Gld)"), "Hengelo");
+        assert_eq!(strip_province_suffix("Bergen (NH)"), "Bergen");
+    }
+
+    #[test]
+    fn leaves_unrelated_parentheticals_intact() {
+        assert_eq!(strip_province_suffix("Foo (123)"), "Foo (123)");
+        assert_eq!(strip_province_suffix("Foo (Bar Baz)"), "Foo (Bar Baz)");
+        assert_eq!(strip_province_suffix("Something (longer)"), "Something (longer)");
+        assert_eq!(strip_province_suffix("Plain"), "Plain");
+        assert_eq!(strip_province_suffix("Foo ()"), "Foo ()");
+    }
 }

@@ -14,6 +14,15 @@ use tokio::{
 /// Maximum time allowed for handling a single connection (read + process + write).
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// Upper bound on request header bytes consumed per connection.
+///
+/// Large enough for realistic browser requests (cookies, Accept-*, Sec-Fetch-*,
+/// Referer) while bounding memory. Closing a TCP socket with unread bytes
+/// pending in the receive queue makes Linux emit a RST instead of FIN, which
+/// surfaces as `ERR_CONNECTION_RESET` in the browser — so we read through the
+/// end-of-headers marker rather than stopping at a fixed byte count.
+const MAX_REQUEST_BYTES: usize = 8192;
+
 use crate::database::DatabaseHandle;
 
 mod localities_list;
@@ -116,22 +125,24 @@ async fn handle_connection(
     database: Arc<DatabaseHandle>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let start = Instant::now();
-    let mut buffer = [0u8; 255];
-    let mut total_read = 0usize;
+    let mut buffer = Vec::with_capacity(1024);
+    let mut chunk = [0u8; 1024];
 
-    while total_read < 255 {
-        let read = stream.read(&mut buffer[total_read..]).await?;
+    loop {
+        let read = stream.read(&mut chunk).await?;
         if read == 0 {
             break;
         }
-        total_read += read;
-        // detect end
-        if buffer[..total_read].ends_with(b"\n") {
+        buffer.extend_from_slice(&chunk[..read]);
+        if find_header_end(&buffer).is_some() {
+            break;
+        }
+        if buffer.len() >= MAX_REQUEST_BYTES {
             break;
         }
     }
 
-    let request = String::from_utf8_lossy(&buffer[..total_read]);
+    let request = String::from_utf8_lossy(&buffer);
 
     let mut lines = request.lines();
     let request_line = lines.next().unwrap_or_default();
@@ -216,22 +227,23 @@ async fn write_response(
     };
 
     if !logging_disabled() {
+        let preview = log_preview(body);
         if status_code == 200 {
             if let Some(duration_ms) = duration_ms {
                 println!(
                     "[bag-address-lookup] successful lookup ({} ms): {}",
-                    duration_ms, body
+                    duration_ms, preview
                 );
             } else {
-                println!("[bag-address-lookup] successful lookup: {}", body);
+                println!("[bag-address-lookup] successful lookup: {}", preview);
             }
         } else if let Some(duration_ms) = duration_ms {
             eprintln!(
                 "[bag-address-lookup] error {} ({} ms): {}",
-                status_code, duration_ms, body
+                status_code, duration_ms, preview
             );
         } else {
-            eprintln!("[bag-address-lookup] error {}: {}", status_code, body);
+            eprintln!("[bag-address-lookup] error {}: {}", status_code, preview);
         }
     }
 
@@ -247,6 +259,37 @@ async fn write_response(
 
 const API_DOCS_HTML: &str = include_str!("api_docs.html");
 
+/// Maximum number of body characters to include in request logs.
+const LOG_BODY_PREVIEW_CHARS: usize = 200;
+
+/// Format a response body for logging: the first `LOG_BODY_PREVIEW_CHARS`
+/// characters (not bytes, so multi-byte UTF-8 names aren't split) followed by
+/// the full body length. Short bodies are returned as-is.
+fn log_preview(body: &str) -> String {
+    let len = body.len();
+    let mut end = 0;
+    let mut count = 0;
+    for (i, _) in body.char_indices() {
+        if count == LOG_BODY_PREVIEW_CHARS {
+            end = i;
+            break;
+        }
+        count += 1;
+    }
+    if count < LOG_BODY_PREVIEW_CHARS {
+        return format!("{body} ({len} bytes)");
+    }
+    format!("{}… ({len} bytes)", &body[..end])
+}
+
+/// Return the offset just past the first `\r\n\r\n` header terminator, if any.
+fn find_header_end(buffer: &[u8]) -> Option<usize> {
+    buffer
+        .windows(4)
+        .position(|w| w == b"\r\n\r\n")
+        .map(|i| i + 4)
+}
+
 /// JSON for a successful lookup response.
 pub(crate) fn json_ok(public_space: &str, locality: &str) -> String {
     serde_json::to_string(&json!({ "pr": public_space, "wp": locality }))
@@ -256,11 +299,6 @@ pub(crate) fn json_ok(public_space: &str, locality: &str) -> String {
 /// JSON for an error response.
 pub(crate) fn json_error(message: &str) -> String {
     serde_json::to_string(&json!({ "error": message })).expect("serialize error response")
-}
-
-/// JSON list response (used by suggestions).
-pub(crate) fn json_list(values: &[String]) -> String {
-    serde_json::to_string(values).expect("serialize list response")
 }
 
 #[cfg(test)]
@@ -279,6 +317,7 @@ pub(crate) mod test_utils {
             "Rotterdam".to_string(),
             "Utrecht".to_string(),
         ];
+        let locality_codes = vec![3594, 1245, 3451];
         let public_spaces = vec!["Stationsstraat".to_string()];
         let ranges = vec![NumberRange {
             postal_code: encode_pc(b"1234AB"),
@@ -294,20 +333,19 @@ pub(crate) mod test_utils {
             "Rotterdam".to_string(),
             "Utrecht".to_string(),
         ];
-        let provinces = vec![
-            "Noord-Holland".to_string(),
-            "Utrecht".to_string(),
-            "Zuid-Holland".to_string(),
-        ];
+        let provinces = vec!["NH".to_string(), "UT".to_string(), "ZH".to_string()];
         // Amsterdam -> Amsterdam (code 363, Noord-Holland)
         // Rotterdam -> Rotterdam (code 599, Zuid-Holland)
         // Utrecht -> Utrecht (code 344, Utrecht)
         let municipality_codes = vec![363, 599, 344];
         let locality_municipality = vec![0, 1, 2]; // each locality maps to its municipality
         let municipality_province = vec![0, 2, 1]; // Amsterdam->NH, Rotterdam->ZH, Utrecht->Utrecht
+        let locality_had_suffix = vec![false, false, false];
+        let municipality_had_suffix = vec![false, false, false];
 
         DatabaseHandle::Decoded(Database {
             localities,
+            locality_codes,
             public_spaces,
             ranges,
             municipalities,
@@ -315,6 +353,8 @@ pub(crate) mod test_utils {
             municipality_codes,
             locality_municipality,
             municipality_province,
+            locality_had_suffix,
+            municipality_had_suffix,
         })
     }
 

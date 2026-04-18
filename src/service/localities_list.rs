@@ -6,15 +6,19 @@ use super::Response;
 pub(crate) fn handle_localities(database: &DatabaseHandle) -> Response {
     let details = database.locality_details();
     let mut body = String::from("[");
-    for (i, (wp, gm, gm_code)) in details.iter().enumerate() {
+    for (i, (wp, wp_code, gm, gm_code, pv, unique, had_suffix)) in details.iter().enumerate() {
         if i > 0 {
             body.push(',');
         }
         body.push_str(&format!(
-            "{{\"wp\":{},\"gm\":{},\"gm_code\":{}}}",
+            "{{\"wp\":{},\"wp_code\":{},\"gm\":{},\"gm_code\":{},\"pv\":{},\"unique\":{},\"had_suffix\":{}}}",
             serde_json::to_string(wp).expect("serialize wp"),
+            wp_code,
             serde_json::to_string(gm).expect("serialize gm"),
             gm_code,
+            serde_json::to_string(pv).expect("serialize pv"),
+            unique,
+            had_suffix,
         ));
     }
     body.push(']');
@@ -34,7 +38,11 @@ mod tests {
 
         assert!(response.starts_with("HTTP/1.1 200 OK"));
         assert!(response.contains("\"wp\":"));
+        assert!(response.contains("\"wp_code\":"));
         assert!(response.contains("\"gm\":"));
         assert!(response.contains("\"gm_code\":"));
+        assert!(response.contains("\"pv\":"));
+        assert!(response.contains("\"unique\":"));
+        assert!(response.contains("\"had_suffix\":"));
     }
 }

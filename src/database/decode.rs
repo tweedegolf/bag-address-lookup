@@ -148,8 +148,40 @@ impl Database {
             municipality_codes.push(read_u16_reader(&mut reader)?);
         }
 
+        // Decode locality codes (BAG woonplaatsidentificatiecode per locality_index)
+        let expected_locality_codes_offset = header.expected_locality_codes_offset()?;
+        if header.locality_codes_offset != expected_locality_codes_offset {
+            return Err(DatabaseError::InvalidLayout);
+        }
+
+        let mut locality_codes = Vec::with_capacity(header.locality_count as usize);
+        for _ in 0..header.locality_count {
+            locality_codes.push(read_u16_reader(&mut reader)?);
+        }
+
+        // Decode locality had_suffix flags (1 byte each, 0 or 1)
+        let expected_locality_had_suffix_offset = header.expected_locality_had_suffix_offset()?;
+        if header.locality_had_suffix_offset != expected_locality_had_suffix_offset {
+            return Err(DatabaseError::InvalidLayout);
+        }
+        let mut locality_had_suffix = Vec::with_capacity(header.locality_count as usize);
+        for _ in 0..header.locality_count {
+            locality_had_suffix.push(read_u8_reader(&mut reader)? != 0);
+        }
+
+        // Decode municipality had_suffix flags
+        let expected_muni_had_suffix_offset = header.expected_municipality_had_suffix_offset()?;
+        if header.municipality_had_suffix_offset != expected_muni_had_suffix_offset {
+            return Err(DatabaseError::InvalidLayout);
+        }
+        let mut municipality_had_suffix = Vec::with_capacity(header.municipality_count as usize);
+        for _ in 0..header.municipality_count {
+            municipality_had_suffix.push(read_u8_reader(&mut reader)? != 0);
+        }
+
         Ok(Self {
             localities,
+            locality_codes,
             public_spaces,
             ranges,
             municipalities,
@@ -157,6 +189,8 @@ impl Database {
             municipality_codes,
             locality_municipality,
             municipality_province,
+            locality_had_suffix,
+            municipality_had_suffix,
         })
     }
 
@@ -181,7 +215,17 @@ impl Database {
         self.provinces.get(index as usize).map(String::as_str)
     }
 
-    pub(crate) fn locality_details(&self) -> Vec<(&str, &str, u16)> {
+    pub(crate) fn locality_details(&self) -> Vec<(&str, u16, &str, u16, &str, bool, bool)> {
+        let locality_refs: Vec<&str> = self.localities.iter().map(String::as_str).collect();
+        let muni_refs: Vec<&str> = self.municipalities.iter().map(String::as_str).collect();
+        let flags = super::util::compute_unique_flags(
+            &locality_refs,
+            &muni_refs,
+            &self.locality_municipality,
+            &self.locality_had_suffix,
+            &self.municipality_had_suffix,
+        );
+
         let mut result = Vec::with_capacity(self.localities.len());
         for (i, name) in self.localities.iter().enumerate() {
             let m_idx = self
@@ -192,18 +236,45 @@ impl Database {
             if m_idx == u16::MAX {
                 continue;
             }
+            let wp_code = self.locality_codes.get(i).copied().unwrap_or(0);
             let m_name = self.municipality_name(m_idx).unwrap_or("");
             let m_code = self
                 .municipality_codes
                 .get(m_idx as usize)
                 .copied()
                 .unwrap_or(0);
-            result.push((name.as_str(), m_name, m_code));
+            let p_idx = self
+                .municipality_province
+                .get(m_idx as usize)
+                .copied()
+                .unwrap_or(u8::MAX);
+            let p_code = self.province_name(p_idx).unwrap_or("");
+            let unique = flags.locality_unique.get(i).copied().unwrap_or(false);
+            let had_suffix = self.locality_had_suffix.get(i).copied().unwrap_or(false);
+            result.push((
+                name.as_str(),
+                wp_code,
+                m_name,
+                m_code,
+                p_code,
+                unique,
+                had_suffix,
+            ));
         }
         result
     }
 
-    pub(crate) fn municipality_details(&self) -> Vec<(&str, u16, &str)> {
+    pub(crate) fn municipality_details(&self) -> Vec<(&str, u16, &str, bool, bool)> {
+        let locality_refs: Vec<&str> = self.localities.iter().map(String::as_str).collect();
+        let muni_refs: Vec<&str> = self.municipalities.iter().map(String::as_str).collect();
+        let flags = super::util::compute_unique_flags(
+            &locality_refs,
+            &muni_refs,
+            &self.locality_municipality,
+            &self.locality_had_suffix,
+            &self.municipality_had_suffix,
+        );
+
         let mut result = Vec::with_capacity(self.municipalities.len());
         for (i, name) in self.municipalities.iter().enumerate() {
             let code = self.municipality_codes.get(i).copied().unwrap_or(0);
@@ -213,7 +284,9 @@ impl Database {
                 .copied()
                 .unwrap_or(u8::MAX);
             let p_name = self.province_name(p_idx).unwrap_or("");
-            result.push((name.as_str(), code, p_name));
+            let unique = flags.municipality_unique.get(i).copied().unwrap_or(false);
+            let had_suffix = self.municipality_had_suffix.get(i).copied().unwrap_or(false);
+            result.push((name.as_str(), code, p_name, unique, had_suffix));
         }
         result
     }
