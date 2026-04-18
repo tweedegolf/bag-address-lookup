@@ -30,10 +30,9 @@ const ISSUED_STATUS: &str = "Naamgeving uitgegeven";
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Address {
-    pub id: String,
     pub house_number: u32,
     pub postal_code: String,
-    pub public_space_id: String,
+    pub public_space_id: u64,
 }
 
 /// Parse BAG address XML data into structured address records.
@@ -48,29 +47,22 @@ pub fn parse_addresses<R: BufRead>(
     reader.config_mut().trim_text(true);
 
     let mut buf = Vec::new();
-    let mut by_id: HashMap<String, (u32, Address)> = HashMap::new();
+    let mut by_id: HashMap<u64, (u32, Address)> = HashMap::new();
 
     loop {
         buf.clear();
         match reader.read_event_into(&mut buf)? {
             Event::Start(e) if e.name().as_ref() == NUM_TAG => {
-                if let Some((voorkomen_id, address)) =
+                if let Some((id, voorkomen_id, address)) =
                     parse_address(&mut reader, &mut buf, reference_date)?
                 {
-                    let id = address.id.clone();
-                    by_id
-                        .entry(id)
-                        .and_modify(|slot| {
-                            if voorkomen_id > slot.0 {
-                                *slot = (voorkomen_id, Address {
-                                    id: address.id.clone(),
-                                    house_number: address.house_number,
-                                    postal_code: address.postal_code.clone(),
-                                    public_space_id: address.public_space_id.clone(),
-                                });
-                            }
-                        })
-                        .or_insert((voorkomen_id, address));
+                    match by_id.get_mut(&id) {
+                        Some(slot) if voorkomen_id > slot.0 => *slot = (voorkomen_id, address),
+                        Some(_) => {}
+                        None => {
+                            by_id.insert(id, (voorkomen_id, address));
+                        }
+                    }
                 }
             }
             Event::Eof => break,
@@ -78,16 +70,14 @@ pub fn parse_addresses<R: BufRead>(
         }
     }
 
-    let mut out: Vec<Address> = by_id.into_values().map(|(_, a)| a).collect();
-    out.sort_by(|a, b| a.id.cmp(&b.id));
-    Ok(out)
+    Ok(by_id.into_values().map(|(_, a)| a).collect())
 }
 
 fn parse_address<B: BufRead>(
     reader: &mut Reader<B>,
     buf: &mut Vec<u8>,
     reference_date: &str,
-) -> Result<Option<(u32, Address)>, quick_xml::Error> {
+) -> Result<Option<(u64, u32, Address)>, quick_xml::Error> {
     let mut id = None;
     let mut house_number = None;
     let mut postal_code = None;
@@ -101,7 +91,7 @@ fn parse_address<B: BufRead>(
         match reader.read_event_into(buf)? {
             Event::Start(e) if e.name().as_ref() == ID_TAG => {
                 if let Some(value) = read_simple_tag(reader, ID_TAG, buf)? {
-                    id = Some(value.parse().expect("Failed to parse address id"));
+                    id = Some(value.parse::<u64>().expect("Failed to parse address id"));
                 }
             }
             Event::Start(e) if e.name().as_ref() == HOUSE_NUMBER_TAG => {
@@ -120,7 +110,7 @@ fn parse_address<B: BufRead>(
             }
             Event::Start(e) if e.name().as_ref() == PUBLIC_SPACE_REF_TAG => {
                 if let Some(value) = read_simple_tag(reader, PUBLIC_SPACE_REF_TAG, buf)? {
-                    public_space_id = Some(value);
+                    public_space_id = value.parse::<u64>().ok();
                 }
             }
             Event::Start(e) if e.name().as_ref() == STATUS_TAG => {
@@ -170,9 +160,9 @@ fn parse_address<B: BufRead>(
 
     match (id, house_number, postal_code, public_space_id) {
         (Some(id), Some(house_number), Some(postal_code), Some(public_space_id)) => Ok(Some((
+            id,
             state.voorkomen_id.unwrap_or(0),
             Address {
-                id,
                 house_number,
                 postal_code,
                 public_space_id,

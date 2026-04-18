@@ -1,4 +1,7 @@
 mod database;
+mod suggest;
+
+#[cfg(feature = "webservice")]
 mod service;
 
 #[cfg(feature = "create")]
@@ -14,6 +17,9 @@ mod create;
 mod parsing;
 
 pub use database::{Database, DatabaseError, DatabaseHandle, NumberRange, encode_pc};
+pub use suggest::{DEFAULT_SUGGEST_LIMIT, DEFAULT_SUGGEST_THRESHOLD, SuggestEntry};
+
+#[cfg(feature = "webservice")]
 pub use service::{serve, serve_with_shutdown};
 
 #[cfg(feature = "create")]

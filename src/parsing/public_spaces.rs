@@ -27,7 +27,7 @@ const ISSUED_STATUS: &str = "Naamgeving uitgegeven";
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct PublicSpace {
-    pub id: String,
+    pub id: u64,
     pub name: String,
     pub locality_id: u16,
 }
@@ -44,7 +44,7 @@ pub fn parse_public_spaces<R: BufRead>(
     reader.config_mut().trim_text(true);
 
     let mut buf = Vec::new();
-    let mut by_id: HashMap<String, (u32, PublicSpace)> = HashMap::new();
+    let mut by_id: HashMap<u64, (u32, PublicSpace)> = HashMap::new();
 
     loop {
         buf.clear();
@@ -53,19 +53,13 @@ pub fn parse_public_spaces<R: BufRead>(
                 if let Some((voorkomen_id, public_space)) =
                     parse_openbare_ruimte(&mut reader, &mut buf, reference_date)?
                 {
-                    let id = public_space.id.clone();
-                    by_id
-                        .entry(id)
-                        .and_modify(|slot| {
-                            if voorkomen_id > slot.0 {
-                                *slot = (voorkomen_id, PublicSpace {
-                                    id: public_space.id.clone(),
-                                    name: public_space.name.clone(),
-                                    locality_id: public_space.locality_id,
-                                });
-                            }
-                        })
-                        .or_insert((voorkomen_id, public_space));
+                    match by_id.get_mut(&public_space.id) {
+                        Some(slot) if voorkomen_id > slot.0 => *slot = (voorkomen_id, public_space),
+                        Some(_) => {}
+                        None => {
+                            by_id.insert(public_space.id, (voorkomen_id, public_space));
+                        }
+                    }
                 }
             }
             Event::Eof => break,
@@ -73,9 +67,7 @@ pub fn parse_public_spaces<R: BufRead>(
         }
     }
 
-    let mut out: Vec<PublicSpace> = by_id.into_values().map(|(_, ps)| ps).collect();
-    out.sort_by(|a, b| a.id.cmp(&b.id));
-    Ok(out)
+    Ok(by_id.into_values().map(|(_, ps)| ps).collect())
 }
 
 fn parse_openbare_ruimte<B: BufRead>(
@@ -94,7 +86,7 @@ fn parse_openbare_ruimte<B: BufRead>(
         match reader.read_event_into(buf)? {
             Event::Start(e) if e.name().as_ref() == ID_TAG => {
                 if let Some(value) = read_simple_tag(reader, ID_TAG, buf)? {
-                    id = Some(value);
+                    id = value.parse::<u64>().ok();
                 }
             }
             Event::Start(e) if e.name().as_ref() == NAME_TAG => {

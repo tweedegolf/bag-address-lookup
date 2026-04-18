@@ -99,10 +99,10 @@ fn parse_relation<B: BufRead>(
     if expired {
         return Ok(None);
     }
-    if let Some(b) = begin_geldigheid.as_deref() {
-        if b > reference_date {
-            return Ok(None);
-        }
+    if let Some(b) = begin_geldigheid.as_deref()
+        && b > reference_date
+    {
+        return Ok(None);
     }
 
     match (locality_id, municipality_code) {

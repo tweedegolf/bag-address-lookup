@@ -144,10 +144,10 @@ pub fn index_municipalities(
     // Use u16::MAX as sentinel for localities without a known municipality
     let mut locality_municipality = vec![u16::MAX; locality_count];
     for rel in &relations {
-        if let Some(&locality_index) = locality_map.get(&rel.locality_id) {
-            if let Some(&m_idx) = code_to_index.get(&rel.municipality_code) {
-                locality_municipality[locality_index as usize] = m_idx;
-            }
+        if let Some(&locality_index) = locality_map.get(&rel.locality_id)
+            && let Some(&m_idx) = code_to_index.get(&rel.municipality_code)
+        {
+            locality_municipality[locality_index as usize] = m_idx;
         }
     }
 
@@ -170,7 +170,7 @@ pub fn index_municipalities(
 pub fn index_public_spaces(
     public_spaces: Vec<PublicSpace>,
     locality_map: HashMap<u16, u16>,
-) -> (Vec<String>, HashMap<String, (u32, u16)>) {
+) -> (Vec<String>, HashMap<u64, (u32, u16)>) {
     let mut kept: Vec<PublicSpace> = Vec::with_capacity(public_spaces.len());
     let mut orphaned = 0usize;
     for public_space in public_spaces {
@@ -214,7 +214,7 @@ pub fn index_public_spaces(
 /// Encode addresses into sorted, contiguous number ranges.
 pub fn encode_addresses(
     addresses: Vec<Address>,
-    public_spaces_map: &HashMap<String, (u32, u16)>,
+    public_spaces_map: &HashMap<u64, (u32, u16)>,
 ) -> Vec<NumberRange> {
     let mut entries = Vec::with_capacity(addresses.len());
 
@@ -377,17 +377,17 @@ mod tests {
         let LocalityMap { locality_map, .. } = locality_map_fixture();
         let public_spaces = vec![
             PublicSpace {
-                id: "ps-2".to_string(),
+                id: 2,
                 name: "Spoorstraat".to_string(),
                 locality_id: 10,
             },
             PublicSpace {
-                id: "ps-1".to_string(),
+                id: 1,
                 name: "Hoofdweg".to_string(),
                 locality_id: 11,
             },
             PublicSpace {
-                id: "ps-3".to_string(),
+                id: 3,
                 name: "Spoorstraat".to_string(),
                 locality_id: 12,
             },
@@ -396,66 +396,59 @@ mod tests {
         let (names, map) = index_public_spaces(public_spaces, locality_map);
 
         assert_eq!(names, vec!["Hoofdweg", "Spoorstraat"]);
-        assert_eq!(map.get("ps-1"), Some(&(0, 0)));
-        assert_eq!(map.get("ps-2"), Some(&(1, 2)));
-        assert_eq!(map.get("ps-3"), Some(&(1, 1)));
+        assert_eq!(map.get(&1), Some(&(0, 0)));
+        assert_eq!(map.get(&2), Some(&(1, 2)));
+        assert_eq!(map.get(&3), Some(&(1, 1)));
     }
 
     #[test]
     fn encode_addresses_groups_and_sorts_ranges() {
         let mut public_spaces_map = std::collections::HashMap::new();
-        public_spaces_map.insert("ps-1".to_string(), (0, 0));
-        public_spaces_map.insert("ps-2".to_string(), (1, 0));
+        public_spaces_map.insert(1u64, (0, 0));
+        public_spaces_map.insert(2u64, (1, 0));
 
         let addresses = vec![
             Address {
-                id: "a-1".to_string(),
                 house_number: 2,
 
                 postal_code: "1234AB".to_string(),
-                public_space_id: "ps-1".to_string(),
+                public_space_id: 1,
             },
             Address {
-                id: "a-2".to_string(),
                 house_number: 1,
 
                 postal_code: "1234AB".to_string(),
-                public_space_id: "ps-1".to_string(),
+                public_space_id: 1,
             },
             Address {
-                id: "a-3".to_string(),
                 house_number: 2,
 
                 postal_code: "1234AB".to_string(),
-                public_space_id: "ps-1".to_string(),
+                public_space_id: 1,
             },
             Address {
-                id: "a-4".to_string(),
                 house_number: 4,
 
                 postal_code: "1234AB".to_string(),
-                public_space_id: "ps-1".to_string(),
+                public_space_id: 1,
             },
             Address {
-                id: "a-5".to_string(),
                 house_number: 1,
 
                 postal_code: "1234AB".to_string(),
-                public_space_id: "ps-2".to_string(),
+                public_space_id: 2,
             },
             Address {
-                id: "a-6".to_string(),
                 house_number: 3,
 
                 postal_code: "1234AC".to_string(),
-                public_space_id: "ps-1".to_string(),
+                public_space_id: 1,
             },
             Address {
-                id: "a-7".to_string(),
                 house_number: 9,
 
                 postal_code: "1234AB".to_string(),
-                public_space_id: "missing".to_string(),
+                public_space_id: 999,
             },
         ];
 
@@ -512,17 +505,15 @@ mod tests {
     #[test]
     fn encode_addresses_detects_step() {
         let mut public_spaces_map = std::collections::HashMap::new();
-        public_spaces_map.insert("ps-1".to_string(), (0, 0));
+        public_spaces_map.insert(1u64, (0, 0));
 
         // Odd numbers 1,3,5,7 and even numbers 2,4,6
         let addresses: Vec<Address> = [1, 3, 5, 7, 2, 4, 6]
             .into_iter()
-            .enumerate()
-            .map(|(i, n)| Address {
-                id: format!("a-{i}"),
+            .map(|n| Address {
                 house_number: n,
                 postal_code: "5678CD".to_string(),
-                public_space_id: "ps-1".to_string(),
+                public_space_id: 1,
             })
             .collect();
 
@@ -542,17 +533,15 @@ mod tests {
     #[test]
     fn encode_addresses_odd_even_stepping() {
         let mut public_spaces_map = std::collections::HashMap::new();
-        public_spaces_map.insert("ps-1".to_string(), (0, 0));
+        public_spaces_map.insert(1u64, (0, 0));
 
         // Only odd numbers: 1,3,5,7,9
         let addresses: Vec<Address> = [1, 3, 5, 7, 9]
             .into_iter()
-            .enumerate()
-            .map(|(i, n)| Address {
-                id: format!("a-{i}"),
+            .map(|n| Address {
                 house_number: n,
                 postal_code: "5678CD".to_string(),
-                public_space_id: "ps-1".to_string(),
+                public_space_id: 1,
             })
             .collect();
 
@@ -567,17 +556,15 @@ mod tests {
     #[test]
     fn encode_addresses_step_break() {
         let mut public_spaces_map = std::collections::HashMap::new();
-        public_spaces_map.insert("ps-1".to_string(), (0, 0));
+        public_spaces_map.insert(1u64, (0, 0));
 
         // 2,4,6 then 9 (breaks the step=2 pattern)
         let addresses: Vec<Address> = [2, 4, 6, 9]
             .into_iter()
-            .enumerate()
-            .map(|(i, n)| Address {
-                id: format!("a-{i}"),
+            .map(|n| Address {
                 house_number: n,
                 postal_code: "5678CD".to_string(),
-                public_space_id: "ps-1".to_string(),
+                public_space_id: 1,
             })
             .collect();
 

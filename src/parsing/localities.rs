@@ -60,18 +60,13 @@ pub fn parse_localities<R: BufRead>(
                 if let Some((voorkomen_id, locality)) =
                     parse_woonplaats(&mut reader, &mut buf, reference_date)?
                 {
-                    by_id
-                        .entry(locality.id)
-                        .and_modify(|slot| {
-                            if voorkomen_id > slot.0 {
-                                *slot = (voorkomen_id, Locality {
-                                    id: locality.id,
-                                    name: locality.name.clone(),
-                                    had_suffix: locality.had_suffix,
-                                });
-                            }
-                        })
-                        .or_insert((voorkomen_id, locality));
+                    match by_id.get_mut(&locality.id) {
+                        Some(slot) if voorkomen_id > slot.0 => *slot = (voorkomen_id, locality),
+                        Some(_) => {}
+                        None => {
+                            by_id.insert(locality.id, (voorkomen_id, locality));
+                        }
+                    }
                 }
             }
             Event::Eof => break,

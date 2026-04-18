@@ -172,6 +172,18 @@ impl DatabaseHandle {
         }
     }
 
+    /// Fuzzy-search localities and municipalities for `query`.
+    ///
+    /// See [`crate::suggest::suggest`] for the scoring details.
+    pub fn suggest(
+        &self,
+        query: &str,
+        threshold: f32,
+        limit: usize,
+    ) -> Vec<crate::suggest::SuggestEntry> {
+        crate::suggest::suggest(self, query, threshold, limit)
+    }
+
     /// Load the embedded BAG database.
     pub fn load() -> Result<DatabaseHandle, DatabaseError> {
         #[cfg(feature = "compressed_database")]
