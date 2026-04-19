@@ -50,8 +50,12 @@ pub(crate) fn read_simple_tag<B: BufRead>(
     loop {
         buf.clear();
         match reader.read_event_into(buf)? {
-            Event::Text(t) => content.get_or_insert_with(String::new).push_str(&t.decode()?),
-            Event::CData(t) => content.get_or_insert_with(String::new).push_str(&t.decode()?),
+            Event::Text(t) => content
+                .get_or_insert_with(String::new)
+                .push_str(&t.decode()?),
+            Event::CData(t) => content
+                .get_or_insert_with(String::new)
+                .push_str(&t.decode()?),
             Event::GeneralRef(r) => {
                 if let Some(ch) = r.resolve_char_ref()? {
                     content.get_or_insert_with(String::new).push(ch);

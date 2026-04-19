@@ -162,9 +162,7 @@ impl Header {
             .ok_or(DatabaseError::InvalidLayout)
     }
 
-    pub(crate) fn expected_municipality_had_suffix_offset(
-        &self,
-    ) -> Result<usize, DatabaseError> {
+    pub(crate) fn expected_municipality_had_suffix_offset(&self) -> Result<usize, DatabaseError> {
         self.locality_had_suffix_offset
             .checked_add(self.locality_count as usize)
             .ok_or(DatabaseError::InvalidLayout)

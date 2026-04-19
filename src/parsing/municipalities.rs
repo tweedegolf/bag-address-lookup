@@ -39,10 +39,7 @@ pub(crate) fn strip_province_suffix(name: &str) -> &str {
         return name;
     };
     let inside = stripped[open + 2..].trim_end_matches('.');
-    if !inside.is_empty()
-        && inside.len() <= 3
-        && inside.chars().all(|c| c.is_ascii_alphabetic())
-    {
+    if !inside.is_empty() && inside.len() <= 3 && inside.chars().all(|c| c.is_ascii_alphabetic()) {
         return name[..open].trim_end();
     }
     name
@@ -214,7 +211,10 @@ mod tests {
     fn leaves_unrelated_parentheticals_intact() {
         assert_eq!(strip_province_suffix("Foo (123)"), "Foo (123)");
         assert_eq!(strip_province_suffix("Foo (Bar Baz)"), "Foo (Bar Baz)");
-        assert_eq!(strip_province_suffix("Something (longer)"), "Something (longer)");
+        assert_eq!(
+            strip_province_suffix("Something (longer)"),
+            "Something (longer)"
+        );
         assert_eq!(strip_province_suffix("Plain"), "Plain");
         assert_eq!(strip_province_suffix("Foo ()"), "Foo ()");
     }

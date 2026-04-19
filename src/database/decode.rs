@@ -285,7 +285,11 @@ impl Database {
                 .unwrap_or(u8::MAX);
             let p_name = self.province_name(p_idx).unwrap_or("");
             let unique = flags.municipality_unique.get(i).copied().unwrap_or(false);
-            let had_suffix = self.municipality_had_suffix.get(i).copied().unwrap_or(false);
+            let had_suffix = self
+                .municipality_had_suffix
+                .get(i)
+                .copied()
+                .unwrap_or(false);
             result.push((name.as_str(), code, p_name, unique, had_suffix));
         }
         result

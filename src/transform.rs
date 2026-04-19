@@ -181,13 +181,13 @@ pub fn index_public_spaces(
         }
     }
     if orphaned > 0 {
-        eprintln!(
-            "Warning: Dropped {orphaned} public space(s) referencing an unknown locality"
-        );
+        eprintln!("Warning: Dropped {orphaned} public space(s) referencing an unknown locality");
     }
 
-    let mut public_space_names: Vec<String> =
-        kept.iter().map(|public_space| public_space.name.clone()).collect();
+    let mut public_space_names: Vec<String> = kept
+        .iter()
+        .map(|public_space| public_space.name.clone())
+        .collect();
     public_space_names.sort();
     public_space_names.dedup();
 

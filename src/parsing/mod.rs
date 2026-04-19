@@ -38,9 +38,8 @@ impl ParsedData {
         let mut zip = ZipArchive::new(f)?;
         let mut data = ParsedData::default();
 
-        let reference_date = extract_date_from_zip(&mut zip).ok_or(
-            "Could not determine standtechnische datum from BAG extract filenames",
-        )?;
+        let reference_date = extract_date_from_zip(&mut zip)
+            .ok_or("Could not determine standtechnische datum from BAG extract filenames")?;
         log_with_elapsed(
             start,
             &format!("Using extract reference date {reference_date}"),
@@ -199,8 +198,11 @@ mod tests {
 
         // Output order depends on HashMap iteration and parallel scheduling,
         // so assertions are set-based.
-        let mut house_numbers: Vec<u32> =
-            parsed_data.addresses.iter().map(|a| a.house_number).collect();
+        let mut house_numbers: Vec<u32> = parsed_data
+            .addresses
+            .iter()
+            .map(|a| a.house_number)
+            .collect();
         house_numbers.sort();
         assert_eq!(house_numbers, vec![1, 56]);
         assert!(
@@ -218,8 +220,11 @@ mod tests {
         public_space_names.sort();
         assert_eq!(public_space_names, vec!["Abel Eppensstraat", "Adamistraat"]);
 
-        let mut locality_names: Vec<&str> =
-            parsed_data.localities.iter().map(|l| l.name.as_str()).collect();
+        let mut locality_names: Vec<&str> = parsed_data
+            .localities
+            .iter()
+            .map(|l| l.name.as_str())
+            .collect();
         locality_names.sort();
         assert_eq!(locality_names, vec!["Hoogerheide", "Huijbergen"]);
     }
@@ -249,10 +254,7 @@ mod tests {
             }
             None
         }
-        assert_eq!(
-            parse("9999WPL08122025.zip").as_deref(),
-            Some("2025-12-08")
-        );
+        assert_eq!(parse("9999WPL08122025.zip").as_deref(), Some("2025-12-08"));
         assert_eq!(
             parse("GEM-WPL-RELATIE-08122025.zip").as_deref(),
             Some("2025-12-08")
