@@ -26,6 +26,8 @@ pub struct NumberRange {
 
 pub struct Database {
     pub localities: Vec<String>,
+    /// BAG woonplaatsidentificatiecode per locality_index.
+    pub locality_codes: Vec<u16>,
     pub public_spaces: Vec<String>,
     pub ranges: Vec<NumberRange>,
     pub municipalities: Vec<String>,
@@ -35,6 +37,11 @@ pub struct Database {
     pub locality_municipality: Vec<u16>,
     /// Maps municipality_index -> province_index.
     pub municipality_province: Vec<u8>,
+    /// Parallel to `localities`: true when the source name carried a stripped
+    /// province suffix. Forces `unique = false` in the JSON output.
+    pub locality_had_suffix: Vec<bool>,
+    /// Parallel to `municipalities`: same semantic as above for CBS entries.
+    pub municipality_had_suffix: Vec<bool>,
 }
 
 pub struct DatabaseView {
@@ -60,6 +67,9 @@ pub struct DatabaseView {
     locality_municipality_map_offset: usize,
     municipality_province_map_offset: usize,
     municipality_codes_offset: usize,
+    locality_codes_offset: usize,
+    locality_had_suffix_offset: usize,
+    municipality_had_suffix_offset: usize,
 }
 
 #[cfg(not(feature = "create"))]
@@ -135,20 +145,43 @@ impl DatabaseHandle {
         }
     }
 
-    /// Iterate over all localities, yielding (name, municipality_name, municipality_code).
-    pub fn locality_details(&self) -> Vec<(&str, &str, u16)> {
+    /// Iterate over all localities, yielding (name, locality_code, municipality_name, municipality_code, province_code, name_unique, had_suffix).
+    ///
+    /// `locality_code` is the BAG woonplaatsidentificatiecode, which uniquely
+    /// identifies the Woonplaats even when names are shared across entries.
+    /// `name_unique` is true when this locality's name appears only here
+    /// across all localities and municipalities; a locality sharing its name
+    /// with its own parent municipality is not treated as a collision.
+    /// `had_suffix` is true when the source BAG name carried a stripped
+    /// province suffix (e.g. `Loo Gld` → `Loo`).
+    pub fn locality_details(&self) -> Vec<(&str, u16, &str, u16, &str, bool, bool)> {
         match self {
             DatabaseHandle::Decoded(db) => db.locality_details(),
             DatabaseHandle::View(view) => view.locality_details(),
         }
     }
 
-    /// Iterate over all municipalities, yielding (name, code, province_name).
-    pub fn municipality_details(&self) -> Vec<(&str, u16, &str)> {
+    /// Iterate over all municipalities, yielding (name, code, province_name, name_unique, had_suffix).
+    ///
+    /// `had_suffix` is true when the CBS name carried a stripped province
+    /// suffix (e.g. `Hengelo (O.)` → `Hengelo`).
+    pub fn municipality_details(&self) -> Vec<(&str, u16, &str, bool, bool)> {
         match self {
             DatabaseHandle::Decoded(db) => db.municipality_details(),
             DatabaseHandle::View(view) => view.municipality_details(),
         }
+    }
+
+    /// Fuzzy-search localities and municipalities for `query`.
+    ///
+    /// See [`crate::suggest::suggest`] for the scoring details.
+    pub fn suggest(
+        &self,
+        query: &str,
+        threshold: f32,
+        limit: usize,
+    ) -> Vec<crate::suggest::SuggestEntry> {
+        crate::suggest::suggest(self, query, threshold, limit)
     }
 
     /// Load the embedded BAG database.

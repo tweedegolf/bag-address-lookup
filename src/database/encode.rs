@@ -92,6 +92,15 @@ impl Database {
 
         let municipality_codes_offset =
             municipality_province_map_offset + municipality_province_map_len;
+        let municipality_codes_len = municipality_count as usize * 2;
+
+        let locality_codes_offset = municipality_codes_offset + municipality_codes_len;
+        let locality_codes_len = locality_count as usize * 2;
+
+        let locality_had_suffix_offset = locality_codes_offset + locality_codes_len;
+        let locality_had_suffix_len = locality_count as usize;
+
+        let municipality_had_suffix_offset = locality_had_suffix_offset + locality_had_suffix_len;
 
         // Write header
         writer.write_all(&DATABASE_MAGIC)?;
@@ -112,6 +121,9 @@ impl Database {
         writer.write_all(&(locality_municipality_map_offset as u32).to_le_bytes())?;
         writer.write_all(&(municipality_province_map_offset as u32).to_le_bytes())?;
         writer.write_all(&(municipality_codes_offset as u32).to_le_bytes())?;
+        writer.write_all(&(locality_codes_offset as u32).to_le_bytes())?;
+        writer.write_all(&(locality_had_suffix_offset as u32).to_le_bytes())?;
+        writer.write_all(&(municipality_had_suffix_offset as u32).to_le_bytes())?;
 
         // Write locality string table
         let mut offset = 0u32;
@@ -180,6 +192,19 @@ impl Database {
         // Write municipality codes
         for &code in &self.municipality_codes {
             writer.write_all(&code.to_le_bytes())?;
+        }
+
+        // Write locality codes (BAG woonplaatsidentificatiecode per locality_index)
+        for &code in &self.locality_codes {
+            writer.write_all(&code.to_le_bytes())?;
+        }
+
+        // Write had_suffix flags as one byte each (0 or 1).
+        for &flag in &self.locality_had_suffix {
+            writer.write_all(&[flag as u8])?;
+        }
+        for &flag in &self.municipality_had_suffix {
+            writer.write_all(&[flag as u8])?;
         }
 
         Ok(())

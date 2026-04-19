@@ -1,5 +1,93 @@
-pub(crate) const DATABASE_MAGIC: [u8; 4] = *b"BAG2";
-pub(crate) const DATABASE_HEADER_SIZE: usize = 72;
+use std::collections::HashMap;
+
+pub(crate) const DATABASE_MAGIC: [u8; 4] = *b"BAG4";
+pub(crate) const DATABASE_HEADER_SIZE: usize = 84;
+
+pub(crate) struct UniqueFlags {
+    pub(crate) locality_unique: Vec<bool>,
+    pub(crate) municipality_unique: Vec<bool>,
+}
+
+/// Compute per-entity uniqueness across localities and municipalities.
+///
+/// A locality in municipality M is unique if no other locality outside M
+/// and no municipality besides M shares its name. Symmetrically, a
+/// municipality is unique if no other municipality shares its name and no
+/// locality outside it does either (localities inside it that match its
+/// name are treated as the same named place, not a collision).
+pub(crate) fn compute_unique_flags(
+    locality_names: &[&str],
+    municipality_names: &[&str],
+    locality_municipality: &[u16],
+    locality_had_suffix: &[bool],
+    municipality_had_suffix: &[bool],
+) -> UniqueFlags {
+    let mut count_l: HashMap<&str, u32> = HashMap::new();
+    let mut count_m: HashMap<&str, u32> = HashMap::new();
+    for name in locality_names {
+        *count_l.entry(name).or_insert(0) += 1;
+    }
+    for name in municipality_names {
+        *count_m.entry(name).or_insert(0) += 1;
+    }
+
+    // Does each municipality contain at least one locality sharing its name?
+    let mut has_self = vec![false; municipality_names.len()];
+    for (i, name) in locality_names.iter().enumerate() {
+        let m_idx = locality_municipality.get(i).copied().unwrap_or(u16::MAX);
+        if m_idx == u16::MAX || (m_idx as usize) >= municipality_names.len() {
+            continue;
+        }
+        if municipality_names[m_idx as usize] == *name {
+            has_self[m_idx as usize] = true;
+        }
+    }
+
+    // Names that carried a disambiguating province suffix in the source data
+    // (BAG for localities, CBS for municipalities) are always marked as
+    // non-unique — the source registrars kept the suffix because the name has
+    // historical ambiguity, even when no live duplicate remains today.
+    let locality_unique: Vec<bool> = locality_names
+        .iter()
+        .enumerate()
+        .map(|(i, name)| {
+            if locality_had_suffix.get(i).copied().unwrap_or(false) {
+                return false;
+            }
+            let m_idx = locality_municipality.get(i).copied().unwrap_or(u16::MAX);
+            let parent_matches = (m_idx as usize) < municipality_names.len()
+                && m_idx != u16::MAX
+                && municipality_names[m_idx as usize] == *name;
+            let other_localities = count_l.get(name).copied().unwrap_or(0).saturating_sub(1);
+            let mut other_munis = count_m.get(name).copied().unwrap_or(0);
+            if parent_matches {
+                other_munis = other_munis.saturating_sub(1);
+            }
+            other_localities + other_munis == 0
+        })
+        .collect();
+
+    let municipality_unique: Vec<bool> = municipality_names
+        .iter()
+        .enumerate()
+        .map(|(i, name)| {
+            if municipality_had_suffix.get(i).copied().unwrap_or(false) {
+                return false;
+            }
+            let mut other_localities = count_l.get(name).copied().unwrap_or(0);
+            if has_self[i] {
+                other_localities = other_localities.saturating_sub(1);
+            }
+            let other_munis = count_m.get(name).copied().unwrap_or(0).saturating_sub(1);
+            other_localities + other_munis == 0
+        })
+        .collect();
+
+    UniqueFlags {
+        locality_unique,
+        municipality_unique,
+    }
+}
 
 /// Encode a 6-char postal code into a compact sortable integer.
 pub fn encode_pc(s: &[u8]) -> u32 {

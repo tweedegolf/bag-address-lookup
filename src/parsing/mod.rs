@@ -8,10 +8,12 @@ mod xml_utils;
 use std::{
     error::Error,
     fs::File,
-    io::{BufReader, Read},
+    io::{BufReader, Cursor, Read},
     path::Path,
     time::Instant,
 };
+
+use rayon::prelude::*;
 
 pub use addresses::{Address, parse_addresses};
 pub use localities::{Locality, parse_localities};
@@ -36,6 +38,13 @@ impl ParsedData {
         let mut zip = ZipArchive::new(f)?;
         let mut data = ParsedData::default();
 
+        let reference_date = extract_date_from_zip(&mut zip)
+            .ok_or("Could not determine standtechnische datum from BAG extract filenames")?;
+        log_with_elapsed(
+            start,
+            &format!("Using extract reference date {reference_date}"),
+        );
+
         for index in 0..zip.len() {
             let mut entry = zip.by_index(index)?;
             let name = entry.name().to_string();
@@ -52,7 +61,7 @@ impl ParsedData {
                     start,
                     &mut entry,
                     "municipality relations",
-                    |reader| parse_municipality_relations(reader),
+                    |reader| parse_municipality_relations(reader, &reference_date),
                 )?;
             } else {
                 match &name[..7] {
@@ -62,7 +71,7 @@ impl ParsedData {
                             start,
                             &mut entry,
                             "localities",
-                            |reader| parse_localities(reader),
+                            |reader| parse_localities(reader, &reference_date),
                         )?;
                     }
                     // OpenbareRuimte (public space) - BAG catalog §7.3
@@ -71,7 +80,7 @@ impl ParsedData {
                             start,
                             &mut entry,
                             "public spaces",
-                            |reader| parse_public_spaces(reader),
+                            |reader| parse_public_spaces(reader, &reference_date),
                         )?;
                     }
                     // Nummeraanduiding (address designation) - BAG catalog §7.4
@@ -80,7 +89,7 @@ impl ParsedData {
                             start,
                             &mut entry,
                             "addresses",
-                            |reader| parse_addresses(reader),
+                            |reader| parse_addresses(reader, &reference_date),
                         )?;
                     }
                     _ => {
@@ -97,44 +106,82 @@ impl ParsedData {
         start: Instant,
         entry: &mut zip::read::ZipFile<'_, File>,
         label: &str,
-        mut parse_fn: F,
+        parse_fn: F,
     ) -> Result<Vec<T>, Box<dyn Error>>
     where
-        F: FnMut(&mut dyn std::io::BufRead) -> Result<Vec<T>, quick_xml::Error>,
+        T: Send,
+        F: Fn(&mut dyn std::io::BufRead) -> Result<Vec<T>, quick_xml::Error> + Sync,
     {
         let name = entry.name().to_string();
         let mut buf = Vec::new();
         entry.read_to_end(&mut buf)?;
 
         log_with_elapsed(start, &format!("Read {} bytes from {name}", buf.len()));
-        let cursor = std::io::Cursor::new(buf);
-        let mut inner_zip = ZipArchive::new(cursor)?;
 
-        let mut items = Vec::new();
+        // Inner ZIP entries are parsed in parallel. Each worker opens its own
+        // ZipArchive over the shared buffer; ZipArchive::by_index needs &mut,
+        // so sharing a single archive across threads isn't possible, but
+        // re-opening is cheap since the central directory is already in memory.
+        let n = ZipArchive::new(Cursor::new(&buf[..]))?.len();
 
-        for i in 0..inner_zip.len() {
-            let inner_entry = inner_zip.by_index(i)?;
-            let inner_name = inner_entry.name().to_string();
+        let per_file: Vec<Vec<T>> = (0..n)
+            .into_par_iter()
+            .map(|i| -> Result<Vec<T>, Box<dyn Error + Send + Sync>> {
+                let mut inner_zip = ZipArchive::new(Cursor::new(&buf[..]))?;
+                let inner_entry = inner_zip.by_index(i)?;
+                if !inner_entry.name().ends_with(".xml") {
+                    return Ok(Vec::new());
+                }
+                let mut reader = BufReader::new(inner_entry);
+                Ok(parse_fn(&mut reader)?)
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| -> Box<dyn Error> { e })?;
 
-            if !inner_name.ends_with(".xml") {
-                continue;
-            }
-
-            let mut reader = BufReader::new(inner_entry);
-            items.extend(parse_fn(&mut reader)?);
-
-            if i % 100 == 0 {
-                log_with_elapsed(
-                    start,
-                    &format!("Loaded {} files and {} items total.", i + 1, items.len()),
-                );
-            }
+        let total: usize = per_file.iter().map(Vec::len).sum();
+        let mut items = Vec::with_capacity(total);
+        for chunk in per_file {
+            items.extend(chunk);
         }
 
         log_with_elapsed(start, &format!("Parsed {} {label}", items.len()));
 
         Ok(items)
     }
+}
+
+/// Extract the standtechnische datum from the BAG extract's filenames.
+///
+/// Extract filenames embed the date as DDMMYYYY (e.g. `9999WPL08122025.zip`
+/// or `GEM-WPL-RELATIE-08122025.zip`). We scan entries for a trailing 8-digit
+/// run and reformat it as ISO-8601 so later string comparisons sort correctly.
+fn extract_date_from_zip(zip: &mut ZipArchive<File>) -> Option<String> {
+    for index in 0..zip.len() {
+        let entry = zip.by_index(index).ok()?;
+        let name = entry.name();
+        let stem = name
+            .rsplit('/')
+            .next()
+            .unwrap_or(name)
+            .trim_end_matches(".zip")
+            .trim_end_matches(".xml");
+        let trailing_digits: String = stem
+            .chars()
+            .rev()
+            .take_while(|c| c.is_ascii_digit())
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect();
+        if trailing_digits.len() >= 8 {
+            let start = trailing_digits.len() - 8;
+            let dd = &trailing_digits[start..start + 2];
+            let mm = &trailing_digits[start + 2..start + 4];
+            let yyyy = &trailing_digits[start + 4..start + 8];
+            return Some(format!("{yyyy}-{mm}-{dd}"));
+        }
+    }
+    None
 }
 
 #[cfg(test)]
@@ -149,15 +196,68 @@ mod tests {
 
         let parsed_data = ParsedData::from_bag_zip(&test_zip_path, start).unwrap();
 
-        assert_eq!(parsed_data.addresses[0].house_number, 56);
-        assert_eq!(parsed_data.addresses[0].postal_code, "1234AB");
-        assert_eq!(parsed_data.addresses[1].house_number, 1);
-        assert_eq!(parsed_data.addresses[1].postal_code, "1234AB");
+        // Output order depends on HashMap iteration and parallel scheduling,
+        // so assertions are set-based.
+        let mut house_numbers: Vec<u32> = parsed_data
+            .addresses
+            .iter()
+            .map(|a| a.house_number)
+            .collect();
+        house_numbers.sort();
+        assert_eq!(house_numbers, vec![1, 56]);
+        assert!(
+            parsed_data
+                .addresses
+                .iter()
+                .all(|a| a.postal_code == "1234AB")
+        );
 
-        assert_eq!(parsed_data.public_spaces[0].name, "Abel Eppensstraat");
-        assert_eq!(parsed_data.public_spaces[1].name, "Adamistraat");
+        let mut public_space_names: Vec<&str> = parsed_data
+            .public_spaces
+            .iter()
+            .map(|s| s.name.as_str())
+            .collect();
+        public_space_names.sort();
+        assert_eq!(public_space_names, vec!["Abel Eppensstraat", "Adamistraat"]);
 
-        assert_eq!(parsed_data.localities[0].name, "Hoogerheide");
-        assert_eq!(parsed_data.localities[1].name, "Huijbergen");
+        let mut locality_names: Vec<&str> = parsed_data
+            .localities
+            .iter()
+            .map(|l| l.name.as_str())
+            .collect();
+        locality_names.sort();
+        assert_eq!(locality_names, vec!["Hoogerheide", "Huijbergen"]);
+    }
+
+    #[test]
+    fn extract_date_parses_ddmmyyyy_filename() {
+        // The function expects a real ZIP archive; just verify the algorithm
+        // on filenames produced by the BAG extract format.
+        fn parse(name: &str) -> Option<String> {
+            let stem = name.trim_end_matches(".zip");
+            let digits: String = stem
+                .chars()
+                .rev()
+                .take_while(|c| c.is_ascii_digit())
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect();
+            if digits.len() >= 8 {
+                let s = digits.len() - 8;
+                return Some(format!(
+                    "{}-{}-{}",
+                    &digits[s + 4..s + 8],
+                    &digits[s + 2..s + 4],
+                    &digits[s..s + 2],
+                ));
+            }
+            None
+        }
+        assert_eq!(parse("9999WPL08122025.zip").as_deref(), Some("2025-12-08"));
+        assert_eq!(
+            parse("GEM-WPL-RELATIE-08122025.zip").as_deref(),
+            Some("2025-12-08")
+        );
     }
 }

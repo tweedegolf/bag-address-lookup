@@ -36,7 +36,7 @@ jobs:
 
       - name: Check release existence
         id: release_check
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           VERSION: ${{ steps.version.outputs.version }}
         with:
@@ -87,7 +87,7 @@ jobs:
         run: rustup update stable && rustup default stable
 
       - name: Cache cargo
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             ~/.cargo/registry
@@ -101,7 +101,7 @@ jobs:
 
       - name: Restore bag.bin cache
         id: bag_cache
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: data/bag.bin
           key: bag-bin-${{ needs.check-version.outputs.version }}
@@ -113,13 +113,13 @@ jobs:
 
       - name: Save bag.bin cache
         if: steps.bag_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: data/bag.bin
           key: bag-bin-${{ needs.check-version.outputs.version }}
 
       - name: Upload bag.bin
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bag.bin
           path: data/bag.bin
@@ -186,7 +186,7 @@ jobs:
           cp target/${{ matrix.target }}/release/bag-service dist/${{ matrix.artifact }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.artifact }}
           path: dist/${{ matrix.artifact }}
@@ -218,7 +218,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push docker image
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         with:
           file: Dockerfile
           push: true
@@ -273,3 +273,42 @@ jobs:
             dist/bag-service-linux-arm64 \
             dist/bag-service-macos-x64 \
             dist/bag-service-macos-arm64
+
+  publish-library-branch:
+    permissions:
+      contents: write
+    needs:
+      - check-version
+      - build-database
+      - release
+    if: needs.check-version.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: true
+          fetch-depth: 1
+
+      - name: Download bag.bin
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: bag.bin
+          path: data
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Publish release branch and library tag
+        env:
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          git checkout -B release
+          git add -f data/bag.bin
+          git commit -m "chore: publish v${VERSION} with bag.bin"
+          git tag "lib-v${VERSION}"
+          git push --force origin release
+          git push origin "lib-v${VERSION}"
