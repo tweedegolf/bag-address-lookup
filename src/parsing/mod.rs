@@ -3,6 +3,7 @@ mod localities;
 pub mod municipalities;
 mod municipality_relations;
 mod public_spaces;
+pub mod rvig_municipalities;
 mod xml_utils;
 
 use std::{

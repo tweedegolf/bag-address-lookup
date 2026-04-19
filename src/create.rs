@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     Database, log_with_elapsed,
-    parsing::{ParsedData, municipalities},
+    parsing::{ParsedData, municipalities, rvig_municipalities},
 };
 
 static DOWNLOAD_URL: &str =
@@ -27,6 +27,8 @@ pub fn create_database() -> Result<(), Box<dyn Error>> {
     let zip_path = ensure_zip_available(start)?;
     let data = ParsedData::from_bag_zip(&zip_path, start)?;
     let cbs_municipalities = municipalities::load_municipalities(start)?;
+    let rvig_municipalities = rvig_municipalities::load_rvig_municipalities(start)?;
+    rvig_municipalities::report_differences_vs_cbs(&rvig_municipalities, &cbs_municipalities, start);
     let database = Database::from_parsed_data(data, &cbs_municipalities)?;
 
     log_with_elapsed(
