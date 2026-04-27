@@ -178,11 +178,7 @@ fn parse_csv_line(line: &str) -> Vec<String> {
 
 /// Log important differences between CBS (primary) and RVIG (secondary) so
 /// any drift is visible when (re)building the database.
-pub fn report_differences_vs_cbs(
-    rvig: &[RvigMunicipality],
-    cbs: &[Municipality],
-    start: Instant,
-) {
+pub fn report_differences_vs_cbs(rvig: &[RvigMunicipality], cbs: &[Municipality], start: Instant) {
     let cbs_by_code: HashMap<u16, &Municipality> = cbs.iter().map(|m| (m.code, m)).collect();
     let rvig_by_code: HashMap<u16, &RvigMunicipality> = rvig.iter().map(|m| (m.code, m)).collect();
 
@@ -219,7 +215,10 @@ pub fn report_differences_vs_cbs(
         ),
     );
     for m in only_in_cbs {
-        eprintln!("  CBS-only gemeente {:04}: {} ({})", m.code, m.name, m.province);
+        eprintln!(
+            "  CBS-only gemeente {:04}: {} ({})",
+            m.code, m.name, m.province
+        );
     }
     for m in only_in_rvig {
         eprintln!("  RVIG-only gemeente {:04}: {}", m.code, m.name);
