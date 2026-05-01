@@ -29,12 +29,12 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 name = "bag_address_lookup"
 version = "0.5.3"
 dependencies = [
- "flate2",
  "quick-xml",
  "rayon",
  "serde_json",
  "tokio",
  "zip",
+ "zstd",
 ]
 
 [[package]]
@@ -287,7 +287,6 @@ version = "1.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843fba2746e448b37e26a819579957415c8cef339bf08564fe8b7ddbd959573c"
 dependencies = [
- "crc32fast",
  "miniz_oxide",
  "zlib-rs",
 ]

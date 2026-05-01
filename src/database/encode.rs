@@ -4,9 +4,6 @@ use std::{
     path::Path,
 };
 
-#[cfg(feature = "compressed_database")]
-use flate2::{Compression, write::GzEncoder};
-
 use crate::Database;
 
 use super::util::{DATABASE_HEADER_SIZE, DATABASE_MAGIC};
@@ -26,7 +23,7 @@ impl Database {
 
         #[cfg(feature = "compressed_database")]
         {
-            let mut encoder = GzEncoder::new(file, Compression::default());
+            let mut encoder = zstd::Encoder::new(file, 22)?;
             self.write_database(
                 &mut encoder,
                 locality_count,
