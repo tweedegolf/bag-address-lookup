@@ -188,9 +188,8 @@ impl DatabaseHandle {
     pub fn load() -> Result<DatabaseHandle, DatabaseError> {
         #[cfg(feature = "compressed_database")]
         {
-            use flate2::bufread::GzDecoder;
-
-            let mut decoder = GzDecoder::new(DATABASE_BYTES);
+            let mut decoder =
+                zstd::Decoder::new(DATABASE_BYTES).map_err(|_| DatabaseError::InvalidMagic)?;
             let db = Database::from_reader(&mut decoder)?;
             Ok(DatabaseHandle::Decoded(db))
         }
@@ -204,7 +203,6 @@ impl DatabaseHandle {
 
 #[cfg(all(test, feature = "compressed_database"))]
 mod tests {
-    use flate2::bufread::GzDecoder;
     use std::path::PathBuf;
 
     use super::*;
@@ -231,7 +229,7 @@ mod tests {
         let db_path = PathBuf::from("test/bag.bin");
 
         let db_bytes = std::fs::read(&db_path).unwrap();
-        let mut decoder = GzDecoder::new(&db_bytes[..]);
+        let mut decoder = zstd::Decoder::new(&db_bytes[..]).unwrap();
         let db = Database::from_reader(&mut decoder).unwrap();
 
         verify_test_db(&db);
