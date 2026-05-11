@@ -174,14 +174,17 @@ impl DatabaseHandle {
 
     /// Fuzzy-search localities and municipalities for `query`.
     ///
+    /// When `include_municipalities` is false, only localities are returned.
+    ///
     /// See [`crate::suggest::suggest`] for the scoring details.
     pub fn suggest(
         &self,
         query: &str,
         threshold: f32,
         limit: usize,
+        include_municipalities: bool,
     ) -> Vec<crate::suggest::SuggestEntry> {
-        crate::suggest::suggest(self, query, threshold, limit)
+        crate::suggest::suggest(self, query, threshold, limit, include_municipalities)
     }
 
     /// Load the embedded BAG database.

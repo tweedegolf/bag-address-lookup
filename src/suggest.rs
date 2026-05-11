@@ -13,6 +13,60 @@ pub const DEFAULT_SUGGEST_THRESHOLD: f32 = 0.7;
 /// Default maximum number of suggestions returned.
 pub const DEFAULT_SUGGEST_LIMIT: usize = 10;
 
+struct StaticLocality {
+    wp: &'static str,
+    wp_code: u16,
+    gm: &'static str,
+    gm_code: u16,
+    pv: &'static str,
+}
+
+struct StaticMunicipality {
+    gm: &'static str,
+    gm_code: u16,
+    pv: &'static str,
+}
+
+/// Caribbean Netherlands entries not present in the BAG/CBS sources we ingest.
+/// `pv = "BES"` marks the three openbare lichamen of Caribisch Nederland, which
+/// do not belong to a province. `wp_code` values for Kralendijk and Rincon are
+/// dummy values above the normal range to avoid conflicts with real localities, and
+/// `unique = true` marks them as not having any name duplicates in the database.
+static CN_LOCALITIES: &[StaticLocality] = &[
+    StaticLocality {
+        wp: "Kralendijk",
+        wp_code: 9001,
+        gm: "Bonaire",
+        gm_code: 1729,
+        pv: "BES",
+    },
+    StaticLocality {
+        wp: "Rincon",
+        wp_code: 9002,
+        gm: "Bonaire",
+        gm_code: 1729,
+        pv: "BES",
+    },
+];
+
+static CN_MUNICIPALITIES: &[StaticMunicipality] = &[
+    StaticMunicipality {
+        gm: "Bonaire",
+        gm_code: 1729,
+        pv: "BES",
+    },
+    StaticMunicipality {
+        gm: "Saba",
+        gm_code: 1731,
+        pv: "BES",
+    },
+    StaticMunicipality {
+        gm: "Sint Eustatius",
+        gm_code: 1730,
+        pv: "BES",
+    },
+];
+
 /// A single scored suggestion result.
 pub enum SuggestEntry {
     Locality {
@@ -46,7 +100,8 @@ impl SuggestEntry {
 ///
 /// Candidates scoring below `threshold` are discarded. At most `limit`
 /// highest-scoring results are returned, mixed across localities and
-/// municipalities.
+/// municipalities. When `include_municipalities` is false, municipality
+/// names are omitted and only localities are returned.
 ///
 /// Prefer calling [`DatabaseHandle::suggest`] — this free function backs it.
 pub(crate) fn suggest(
@@ -54,6 +109,7 @@ pub(crate) fn suggest(
     query: &str,
     threshold: f32,
     limit: usize,
+    include_municipalities: bool,
 ) -> Vec<SuggestEntry> {
     let normalized = normalize_query(query);
     if normalized.is_empty() {
@@ -80,19 +136,57 @@ pub(crate) fn suggest(
         }
     }
 
-    for (gm, gm_code, pv, unique, had_suffix) in database.municipality_details() {
-        let score = fuzzy_score(&normalized, &normalize_query(gm));
+    if include_municipalities {
+        for (gm, gm_code, pv, unique, had_suffix) in database.municipality_details() {
+            let score = fuzzy_score(&normalized, &normalize_query(gm));
+            if score >= threshold {
+                scored.push((
+                    score,
+                    SuggestEntry::Municipality {
+                        gm: gm.to_string(),
+                        gm_code,
+                        pv: pv.to_string(),
+                        unique,
+                        had_suffix,
+                    },
+                ));
+            }
+        }
+    }
+
+    for entry in CN_LOCALITIES {
+        let score = fuzzy_score(&normalized, &normalize_query(entry.wp));
         if score >= threshold {
             scored.push((
                 score,
-                SuggestEntry::Municipality {
-                    gm: gm.to_string(),
-                    gm_code,
-                    pv: pv.to_string(),
-                    unique,
-                    had_suffix,
+                SuggestEntry::Locality {
+                    wp: entry.wp.to_string(),
+                    wp_code: entry.wp_code,
+                    gm: entry.gm.to_string(),
+                    gm_code: entry.gm_code,
+                    pv: entry.pv.to_string(),
+                    unique: true,
+                    had_suffix: false,
                 },
             ));
+        }
+    }
+
+    if include_municipalities {
+        for entry in CN_MUNICIPALITIES {
+            let score = fuzzy_score(&normalized, &normalize_query(entry.gm));
+            if score >= threshold {
+                scored.push((
+                    score,
+                    SuggestEntry::Municipality {
+                        gm: entry.gm.to_string(),
+                        gm_code: entry.gm_code,
+                        pv: entry.pv.to_string(),
+                        unique: true,
+                        had_suffix: false,
+                    },
+                ));
+            }
         }
     }
 
