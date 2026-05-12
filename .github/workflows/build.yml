@@ -140,9 +140,6 @@ jobs:
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
             artifact: bag-service-linux-arm64
-          - os: macos-15-intel
-            target: x86_64-apple-darwin
-            artifact: bag-service-macos-x64
           - os: macos-15
             target: aarch64-apple-darwin
             artifact: bag-service-macos-arm64
@@ -167,7 +164,7 @@ jobs:
           rustup target add --toolchain stable ${{ matrix.target }}
 
       - name: Optionally install musl-tools
-        if: matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'arm64-unknown-linux-musl'
+        if: matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-musl'
         shell: bash
         run: sudo apt-get install -y musl-tools
 
@@ -247,12 +244,6 @@ jobs:
           name: bag-service-linux-arm64
           path: dist
 
-      - name: Download macos x64 artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: bag-service-macos-x64
-          path: dist
-
       - name: Download macos arm64 artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -271,7 +262,6 @@ jobs:
             --generate-notes \
             dist/bag-service-linux-x64 \
             dist/bag-service-linux-arm64 \
-            dist/bag-service-macos-x64 \
             dist/bag-service-macos-arm64
 
   publish-library-branch:
