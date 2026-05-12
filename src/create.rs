@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     Database, log_with_elapsed,
-    parsing::{ParsedData, municipalities, rvig_municipalities},
+    parsing::{ParsedData, municipalities, municipalities::Municipality, rvig_municipalities},
 };
 
 static DOWNLOAD_URL: &str =
@@ -24,16 +24,65 @@ pub fn create_database() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
+    // Fetch the municipality reference data (CBS + RVIG) before the large BAG
+    // download, so a transient outage at either source surfaces immediately.
+    // If exactly one of the two is unreachable we report the failing URL and
+    // carry on with the source that did load.
+    let cbs_municipalities = match municipalities::load_municipalities(start) {
+        Ok(municipalities) => Some(municipalities),
+        Err(error) => {
+            eprintln!("Error: could not load CBS municipality data: {error}");
+            None
+        }
+    };
+    let rvig_municipalities = match rvig_municipalities::load_rvig_municipalities(start) {
+        Ok(municipalities) => Some(municipalities),
+        Err(error) => {
+            eprintln!("Error: could not load RVIG municipality data: {error}");
+            None
+        }
+    };
+
+    match (cbs_municipalities.is_some(), rvig_municipalities.is_some()) {
+        (true, true) => {}
+        (false, false) => {
+            return Err(
+                "Could not load municipality data from CBS or RVIG; see errors above".into(),
+            );
+        }
+        (true, false) => log_with_elapsed(
+            start,
+            "RVIG unavailable — building from CBS only, skipping the cross-check.",
+        ),
+        (false, true) => log_with_elapsed(
+            start,
+            "CBS unavailable — building from RVIG Tabel 33 only (no province data).",
+        ),
+    }
+
+    if let (Some(cbs), Some(rvig)) = (&cbs_municipalities, &rvig_municipalities) {
+        rvig_municipalities::report_differences_vs_cbs(rvig, cbs, start);
+    }
+
+    // CBS is the primary source (it carries provinces); fall back to RVIG when
+    // it is the only one available.
+    let reference_municipalities: Vec<Municipality> = match cbs_municipalities {
+        Some(cbs) => cbs,
+        None => rvig_municipalities
+            .expect("at least one municipality source loaded")
+            .into_iter()
+            .map(|m| Municipality {
+                code: m.code,
+                name: m.name,
+                province: String::new(),
+                had_suffix: m.had_suffix,
+            })
+            .collect(),
+    };
+
     let zip_path = ensure_zip_available(start)?;
     let data = ParsedData::from_bag_zip(&zip_path, start)?;
-    let cbs_municipalities = municipalities::load_municipalities(start)?;
-    let rvig_municipalities = rvig_municipalities::load_rvig_municipalities(start)?;
-    rvig_municipalities::report_differences_vs_cbs(
-        &rvig_municipalities,
-        &cbs_municipalities,
-        start,
-    );
-    let database = Database::from_parsed_data(data, &cbs_municipalities)?;
+    let database = Database::from_parsed_data(data, &reference_municipalities)?;
 
     log_with_elapsed(
         start,
