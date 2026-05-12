@@ -22,6 +22,10 @@ objects (same shape as <code>/municipalities</code>); locality entries carry a
 <table><tr><th>Param</th><th>Description</th></tr>
 <tr><td><code>wp</code></td><td>Locality or municipality name (prefix / fuzzy)</td></tr></table>
 <p>Example: <a href="/suggest?wp=Amst">/suggest?wp=Amst</a></p>
+<p>Caribbean Netherlands entries (Kralendijk, Rincon, Bonaire, Saba, Sint Eustatius)
+are included in suggest results with <code>pv</code> set to <code>BES</code>; these
+are the openbare lichamen, not part of any province and not present in the
+address-lookup database.</p>
 <h2>GET /localities</h2>
 <p>List all localities. Returns a JSON array of objects:</p>
 <table><tr><th>Field</th><th>Description</th></tr>

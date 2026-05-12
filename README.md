@@ -61,6 +61,13 @@ If the `wp` query param is missing, the service responds with `400` and:
 {"error":"missing wp"}
 ```
 
+Municipality names are included in the suggestions by default. Pass
+`municipalities=false` (also accepts `0` or `no`) to return only localities:
+
+```sh
+curl "http://127.0.0.1:8080/suggest?wp=Amster&municipalities=false"
+```
+
 List all localities with their municipality:
 
 ```sh
