@@ -314,10 +314,11 @@ pub(crate) mod test_utils {
     pub(crate) fn test_database() -> DatabaseHandle {
         let localities = vec![
             "Amsterdam".to_string(),
+            "Bolsward".to_string(),
             "Rotterdam".to_string(),
             "Utrecht".to_string(),
         ];
-        let locality_codes = vec![3594, 1245, 3451];
+        let locality_codes = vec![3594, 1115, 1245, 3451];
         let public_spaces = vec!["Stationsstraat".to_string()];
         let ranges = vec![NumberRange {
             postal_code: encode_pc(b"1234AB"),
@@ -331,17 +332,22 @@ pub(crate) mod test_utils {
         let municipalities = vec![
             "Amsterdam".to_string(),
             "Rotterdam".to_string(),
+            "Súdwest-Fryslân".to_string(),
             "Utrecht".to_string(),
         ];
-        let provinces = vec!["NH".to_string(), "UT".to_string(), "ZH".to_string()];
-        // Amsterdam -> Amsterdam (code 363, Noord-Holland)
-        // Rotterdam -> Rotterdam (code 599, Zuid-Holland)
-        // Utrecht -> Utrecht (code 344, Utrecht)
-        let municipality_codes = vec![363, 599, 344];
-        let locality_municipality = vec![0, 1, 2]; // each locality maps to its municipality
-        let municipality_province = vec![0, 2, 1]; // Amsterdam->NH, Rotterdam->ZH, Utrecht->Utrecht
-        let locality_had_suffix = vec![false, false, false];
-        let municipality_had_suffix = vec![false, false, false];
+        let provinces = vec![
+            "FR".to_string(),
+            "NH".to_string(),
+            "UT".to_string(),
+            "ZH".to_string(),
+        ];
+        let municipality_codes = vec![363, 599, 1900, 344];
+        // Amsterdam->Amsterdam, Bolsward->Súdwest-Fryslân, Rotterdam->Rotterdam, Utrecht->Utrecht
+        let locality_municipality = vec![0, 2, 1, 3];
+        // Amsterdam->NH, Rotterdam->ZH, Súdwest-Fryslân->FR, Utrecht->UT
+        let municipality_province = vec![1, 3, 0, 2];
+        let locality_had_suffix = vec![false, false, false, false];
+        let municipality_had_suffix = vec![false, false, false, false];
 
         DatabaseHandle::Decoded(Database {
             localities,

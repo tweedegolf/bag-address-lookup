@@ -105,9 +105,10 @@ fn append_entry_json(entry: &SuggestEntry, body: &mut String) {
             pv,
             unique,
             had_suffix,
+            alias,
         } => {
             body.push_str(&format!(
-                "{{\"wp\":{},\"wp_code\":{},\"gm\":{},\"gm_code\":{},\"pv\":{},\"unique\":{},\"had_suffix\":{}}}",
+                "{{\"wp\":{},\"wp_code\":{},\"gm\":{},\"gm_code\":{},\"pv\":{},\"unique\":{},\"had_suffix\":{}",
                 serde_json::to_string(wp).expect("serialize wp"),
                 wp_code,
                 serde_json::to_string(gm).expect("serialize gm"),
@@ -116,6 +117,13 @@ fn append_entry_json(entry: &SuggestEntry, body: &mut String) {
                 unique,
                 had_suffix,
             ));
+            if let Some(alias) = alias {
+                body.push_str(&format!(
+                    ",\"alias\":{}",
+                    serde_json::to_string(alias).expect("serialize alias"),
+                ));
+            }
+            body.push('}');
         }
         SuggestEntry::Municipality {
             gm,
@@ -168,6 +176,51 @@ mod tests {
         assert!(response.contains("\"gm\":\"Amsterdam\""));
         assert!(response.contains("\"gm_code\":"));
         assert!(response.contains("\"pv\":"));
+    }
+
+    #[tokio::test]
+    async fn suggest_includes_alias_for_fryslan_locality() {
+        let db = Arc::new(test_database());
+        let response = send_request(
+            "GET /suggest?wp=Bolsward HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            db,
+        )
+        .await;
+
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        assert!(response.contains("\"wp\":\"Bolsward\""));
+        assert!(response.contains("\"alias\":\"Boalsert\""));
+    }
+
+    #[tokio::test]
+    async fn suggest_matches_on_alias() {
+        // "Boalsert" is the Frisian alias for the official BAG name "Bolsward";
+        // the official name shares no substring with the alias, so a hit here
+        // proves the alias participated in scoring.
+        let db = Arc::new(test_database());
+        let response = send_request(
+            "GET /suggest?wp=Boalsert HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            db,
+        )
+        .await;
+
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        assert!(response.contains("\"wp\":\"Bolsward\""));
+        assert!(response.contains("\"alias\":\"Boalsert\""));
+    }
+
+    #[tokio::test]
+    async fn suggest_omits_alias_when_locality_has_none() {
+        let db = Arc::new(test_database());
+        let response = send_request(
+            "GET /suggest?wp=Amster HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            db,
+        )
+        .await;
+
+        assert!(response.starts_with("HTTP/1.1 200 OK"));
+        assert!(response.contains("\"wp\":\"Amsterdam\""));
+        assert!(!response.contains("\"alias\""));
     }
 
     #[tokio::test]

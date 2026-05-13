@@ -14,12 +14,7 @@
 //
 // See https://publicaties.rvig.nl/Landelijke_tabellen and LO-451.
 
-use std::{
-    collections::HashMap,
-    error::Error,
-    path::{Path, PathBuf},
-    time::Instant,
-};
+use std::{collections::HashMap, error::Error, time::Instant};
 
 use crate::{
     log_with_elapsed,
@@ -27,7 +22,7 @@ use crate::{
 };
 
 static RVIG_URL: &str = "https://publicaties.rvig.nl/media/13307/download";
-static RVIG_PATH: &str = "data/rvig_municipalities.csv";
+static RVIG_FALLBACK_PATH: &str = "fallback/rvig_municipalities.csv";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RvigMunicipality {
@@ -38,46 +33,86 @@ pub struct RvigMunicipality {
     pub had_suffix: bool,
 }
 
+/// Load RVIG Tabel 33, comparing the live source against the committed
+/// fallback. Returns the live data when reachable; falls back to the committed
+/// copy when RVIG is down. Errors if the live response parses successfully but
+/// differs from the fallback — that signals an upstream change the maintainer
+/// should review and recommit.
 pub fn load_rvig_municipalities(start: Instant) -> Result<Vec<RvigMunicipality>, Box<dyn Error>> {
-    let path = ensure_rvig_available(start)?;
-    let municipalities = parse_rvig_csv(&path)?;
-    log_with_elapsed(
-        start,
-        &format!(
-            "Parsed {} current municipalities from RVIG Tabel 33",
-            municipalities.len()
-        ),
-    );
-    Ok(municipalities)
+    let fallback_bytes = std::fs::read(RVIG_FALLBACK_PATH)
+        .map_err(|e| format!("Could not read RVIG fallback at {RVIG_FALLBACK_PATH}: {e}"))?;
+    let fallback = parse_rvig_csv_bytes(&fallback_bytes)?;
+
+    match fetch_rvig_live(start) {
+        Ok(bytes) => match parse_rvig_csv_bytes(&bytes) {
+            Ok(live) => {
+                if !rvig_match(&live, &fallback) {
+                    return Err(format!(
+                        "Live RVIG Tabel 33 differs from committed fallback at {RVIG_FALLBACK_PATH}. \
+                         Inspect the diff and update the fallback file before continuing."
+                    )
+                    .into());
+                }
+                log_with_elapsed(
+                    start,
+                    &format!(
+                        "Parsed {} current municipalities from RVIG Tabel 33 (matches committed fallback)",
+                        live.len()
+                    ),
+                );
+                Ok(live)
+            }
+            Err(e) => {
+                log_with_elapsed(
+                    start,
+                    &format!(
+                        "RVIG returned an unparseable response ({e}); using committed fallback at {RVIG_FALLBACK_PATH}"
+                    ),
+                );
+                Ok(fallback)
+            }
+        },
+        Err(e) => {
+            log_with_elapsed(
+                start,
+                &format!(
+                    "RVIG unreachable ({e}); using committed fallback at {RVIG_FALLBACK_PATH}"
+                ),
+            );
+            Ok(fallback)
+        }
+    }
 }
 
-fn ensure_rvig_available(start: Instant) -> Result<PathBuf, Box<dyn Error>> {
-    let path = PathBuf::from(RVIG_PATH);
-    if path.exists() {
-        log_with_elapsed(start, "Using existing RVIG municipalities file.");
-        return Ok(path);
-    }
-
+fn fetch_rvig_live(start: Instant) -> Result<Vec<u8>, Box<dyn Error>> {
     log_with_elapsed(start, "Downloading RVIG Tabel 33...");
 
-    let status = std::process::Command::new("curl")
-        .arg("-L")
-        .arg("-o")
-        .arg(&path)
+    let output = std::process::Command::new("curl")
+        .arg("-sLf")
         .arg(RVIG_URL)
-        .status()?;
+        .output()?;
 
-    if !status.success() {
+    if !output.status.success() {
         return Err(format!("Failed to download RVIG Tabel 33 from {RVIG_URL}").into());
     }
 
     log_with_elapsed(start, "RVIG download complete.");
-    Ok(path)
+    Ok(output.stdout)
 }
 
-fn parse_rvig_csv(path: &Path) -> Result<Vec<RvigMunicipality>, Box<dyn Error>> {
-    let bytes = std::fs::read(path)?;
-    let text = decode_utf16_le(&bytes)?;
+fn rvig_match(a: &[RvigMunicipality], b: &[RvigMunicipality]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut a_sorted = a.to_vec();
+    let mut b_sorted = b.to_vec();
+    a_sorted.sort_by_key(|m| m.code);
+    b_sorted.sort_by_key(|m| m.code);
+    a_sorted == b_sorted
+}
+
+fn parse_rvig_csv_bytes(bytes: &[u8]) -> Result<Vec<RvigMunicipality>, Box<dyn Error>> {
+    let text = decode_utf16_le(bytes)?;
     parse_rvig_csv_text(&text)
 }
 

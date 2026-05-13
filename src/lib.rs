@@ -1,4 +1,5 @@
 mod database;
+mod fryslan_aliases;
 mod suggest;
 
 #[cfg(feature = "webservice")]

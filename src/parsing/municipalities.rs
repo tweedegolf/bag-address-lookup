@@ -4,18 +4,14 @@
 // The CBS "Gebieden in Nederland" table is published annually with a new table ID.
 // We auto-detect the latest table via the OData catalog, falling back to a known ID.
 
-use std::{
-    error::Error,
-    path::{Path, PathBuf},
-    time::Instant,
-};
+use std::{error::Error, time::Instant};
 
 use crate::log_with_elapsed;
 
 static CBS_TABLE_ID_FALLBACK: &str = "86247NED";
-static CBS_PATH: &str = "data/municipalities.json";
+static CBS_FALLBACK_PATH: &str = "fallback/municipalities.json";
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Municipality {
     pub code: u16,
     pub name: String,
@@ -29,20 +25,62 @@ pub struct Municipality {
 }
 
 /// Remove the disambiguating province suffix appended to shared names.
-/// Handles both the CBS form with a trailing dot ("Hengelo (O.)", "Bergen (NH.)")
-/// and the BAG form without one ("Hengelo (Gld)").
+/// Handles three forms:
+/// - CBS form with parens and a trailing dot ("Hengelo (O.)", "Bergen (NH.)"),
+/// - BAG municipality form with parens, no dot ("Hengelo (Gld)"),
+/// - BAG locality form without parens ("Bergen L", "Driehuis NH", "Beuningen Gld").
+///
+/// The unparenthesized form is matched against a fixed whitelist of Dutch
+/// province abbreviations so names like "De Bilt", "Ten Boer", "Bergen op Zoom"
+/// are not mistakenly stripped.
 pub(crate) fn strip_province_suffix(name: &str) -> &str {
-    let Some(open) = name.rfind(" (") else {
-        return name;
-    };
-    let Some(stripped) = name.strip_suffix(')') else {
-        return name;
-    };
-    let inside = stripped[open + 2..].trim_end_matches('.');
-    if !inside.is_empty() && inside.len() <= 3 && inside.chars().all(|c| c.is_ascii_alphabetic()) {
-        return name[..open].trim_end();
+    if let Some(stripped) = strip_parenthesized_suffix(name) {
+        return stripped;
+    }
+    if let Some(stripped) = strip_unparenthesized_suffix(name) {
+        return stripped;
     }
     name
+}
+
+fn strip_parenthesized_suffix(name: &str) -> Option<&str> {
+    let open = name.rfind(" (")?;
+    let inner_end = name.strip_suffix(')')?;
+    let inside = inner_end[open + 2..].trim_end_matches('.');
+    if !inside.is_empty() && inside.len() <= 3 && inside.chars().all(|c| c.is_ascii_alphabetic()) {
+        return Some(name[..open].trim_end());
+    }
+    None
+}
+
+fn strip_unparenthesized_suffix(name: &str) -> Option<&str> {
+    let space = name.rfind(' ')?;
+    let suffix = name[space + 1..].trim_end_matches('.');
+    let prefix = name[..space].trim_end();
+    if prefix.is_empty() {
+        return None;
+    }
+    is_province_abbreviation(suffix).then_some(prefix)
+}
+
+/// Recognised Dutch province abbreviations as observed in BAG/CBS/RVIG name
+/// suffixes. Matched case-insensitively.
+fn is_province_abbreviation(token: &str) -> bool {
+    matches!(
+        token.to_ascii_uppercase().as_str(),
+        "L" | "LB"      // Limburg
+        | "NH"           // Noord-Holland
+        | "ZH"           // Zuid-Holland
+        | "NB"           // Noord-Brabant
+        | "GLD"          // Gelderland
+        | "OV"           // Overijssel
+        | "UT"           // Utrecht
+        | "GN"           // Groningen
+        | "DR"           // Drenthe
+        | "FR"           // Friesland
+        | "FL"           // Flevoland
+        | "ZE" // Zeeland
+    )
 }
 
 /// Map a CBS province name to its two-letter code.
@@ -65,18 +103,65 @@ fn province_code(name: &str) -> String {
     .to_string()
 }
 
-/// Download (if needed) and parse CBS municipality data.
+/// Load CBS municipality data, comparing the live source against the committed
+/// fallback. Returns the live data when reachable; falls back to the committed
+/// copy when CBS is down. Errors if the live response parses successfully but
+/// differs from the fallback — that signals an upstream change the maintainer
+/// should review and recommit.
 pub fn load_municipalities(start: Instant) -> Result<Vec<Municipality>, Box<dyn Error>> {
-    let path = ensure_cbs_available(start)?;
-    let municipalities = parse_cbs_json(&path)?;
-    log_with_elapsed(
-        start,
-        &format!(
-            "Parsed {} municipalities from CBS data",
-            municipalities.len()
-        ),
-    );
-    Ok(municipalities)
+    let fallback_text = std::fs::read_to_string(CBS_FALLBACK_PATH)
+        .map_err(|e| format!("Could not read CBS fallback at {CBS_FALLBACK_PATH}: {e}"))?;
+    let fallback = parse_cbs_json_text(&fallback_text)?;
+
+    match fetch_cbs_live(start) {
+        Ok(bytes) => match parse_cbs_json_text(&String::from_utf8_lossy(&bytes)) {
+            Ok(live) => {
+                if !municipalities_match(&live, &fallback) {
+                    return Err(format!(
+                        "Live CBS data differs from committed fallback at {CBS_FALLBACK_PATH}. \
+                         Inspect the diff and update the fallback file before continuing."
+                    )
+                    .into());
+                }
+                log_with_elapsed(
+                    start,
+                    &format!(
+                        "Parsed {} municipalities from CBS (matches committed fallback)",
+                        live.len()
+                    ),
+                );
+                Ok(live)
+            }
+            Err(e) => {
+                log_with_elapsed(
+                    start,
+                    &format!(
+                        "CBS returned an unparseable response ({e}); using committed fallback at {CBS_FALLBACK_PATH}"
+                    ),
+                );
+                Ok(fallback)
+            }
+        },
+        Err(e) => {
+            log_with_elapsed(
+                start,
+                &format!("CBS unreachable ({e}); using committed fallback at {CBS_FALLBACK_PATH}"),
+            );
+            Ok(fallback)
+        }
+    }
+}
+
+/// Compare two municipality lists irrespective of source ordering.
+fn municipalities_match(a: &[Municipality], b: &[Municipality]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut a_sorted = a.to_vec();
+    let mut b_sorted = b.to_vec();
+    a_sorted.sort_by_key(|m| m.code);
+    b_sorted.sort_by_key(|m| m.code);
+    a_sorted == b_sorted
 }
 
 /// Query the CBS OData catalog to find the latest "Gebieden in Nederland" table ID.
@@ -105,13 +190,7 @@ fn detect_latest_table_id(start: Instant) -> Result<String, Box<dyn Error>> {
     Ok(id)
 }
 
-fn ensure_cbs_available(start: Instant) -> Result<PathBuf, Box<dyn Error>> {
-    let path = PathBuf::from(CBS_PATH);
-    if path.exists() {
-        log_with_elapsed(start, "Using existing CBS municipalities file.");
-        return Ok(path);
-    }
-
+fn fetch_cbs_live(start: Instant) -> Result<Vec<u8>, Box<dyn Error>> {
     let table_id = detect_latest_table_id(start).unwrap_or_else(|e| {
         log_with_elapsed(
             start,
@@ -129,24 +208,21 @@ fn ensure_cbs_available(start: Instant) -> Result<PathBuf, Box<dyn Error>> {
 
     log_with_elapsed(start, "Downloading CBS municipality data...");
 
-    let status = std::process::Command::new("curl")
-        .arg("-L")
-        .arg("-o")
-        .arg(&path)
+    let output = std::process::Command::new("curl")
+        .arg("-sLf")
         .arg(&url)
-        .status()?;
+        .output()?;
 
-    if !status.success() {
+    if !output.status.success() {
         return Err(format!("Failed to download CBS data from {url}").into());
     }
 
     log_with_elapsed(start, "CBS download complete.");
-    Ok(path)
+    Ok(output.stdout)
 }
 
-fn parse_cbs_json(path: &Path) -> Result<Vec<Municipality>, Box<dyn Error>> {
-    let data = std::fs::read_to_string(path)?;
-    let json: serde_json::Value = serde_json::from_str(&data)?;
+fn parse_cbs_json_text(data: &str) -> Result<Vec<Municipality>, Box<dyn Error>> {
+    let json: serde_json::Value = serde_json::from_str(data)?;
     let entries = json["value"]
         .as_array()
         .ok_or("CBS JSON: missing 'value' array")?;
@@ -217,5 +293,40 @@ mod tests {
         );
         assert_eq!(strip_province_suffix("Plain"), "Plain");
         assert_eq!(strip_province_suffix("Foo ()"), "Foo ()");
+    }
+
+    #[test]
+    fn strips_unparenthesized_province_suffixes() {
+        assert_eq!(strip_province_suffix("Bergen L"), "Bergen");
+        assert_eq!(strip_province_suffix("Afferden L"), "Afferden");
+        assert_eq!(strip_province_suffix("Well L"), "Well");
+        assert_eq!(strip_province_suffix("Driehuis NH"), "Driehuis");
+        assert_eq!(strip_province_suffix("Oosterend Nh"), "Oosterend");
+        assert_eq!(strip_province_suffix("Beers NB"), "Beers");
+        assert_eq!(strip_province_suffix("Beuningen Gld"), "Beuningen");
+        assert_eq!(strip_province_suffix("Elst Ut"), "Elst");
+        assert_eq!(strip_province_suffix("Haren Gn"), "Haren");
+        assert_eq!(strip_province_suffix("Harkstede GN"), "Harkstede");
+    }
+
+    #[test]
+    fn leaves_lookalike_locality_names_intact() {
+        // Names that end in a short capitalized word that is not a province
+        // abbreviation must be preserved verbatim.
+        for name in [
+            "De Bilt",
+            "De Lier",
+            "Den Burg",
+            "Ten Boer",
+            "Ter Aar",
+            "Oud Ade",
+            "Smalle Ee",
+            "Bergen aan Zee",
+            "Bergen op Zoom",
+            "Bavel AC",
+            "Ulvenhout AC",
+        ] {
+            assert_eq!(strip_province_suffix(name), name, "should not strip {name}");
+        }
     }
 }

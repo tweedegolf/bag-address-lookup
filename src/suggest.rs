@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use crate::DatabaseHandle;
+use crate::{DatabaseHandle, fryslan_aliases::lookup_alias};
 
 /// Default score threshold below which candidates are discarded.
 pub const DEFAULT_SUGGEST_THRESHOLD: f32 = 0.7;
@@ -77,6 +77,8 @@ pub enum SuggestEntry {
         pv: String,
         unique: bool,
         had_suffix: bool,
+        /// Frisian/Dutch translation when the official BAG name has one.
+        alias: Option<&'static str>,
     },
     Municipality {
         gm: String,
@@ -119,7 +121,12 @@ pub(crate) fn suggest(
     let mut scored: Vec<(f32, SuggestEntry)> = Vec::new();
 
     for (wp, wp_code, gm, gm_code, pv, unique, had_suffix) in database.locality_details() {
-        let score = fuzzy_score(&normalized, &normalize_query(wp));
+        let alias = lookup_alias(wp);
+        let name_score = fuzzy_score(&normalized, &normalize_query(wp));
+        let score = match alias {
+            Some(alias) => name_score.max(fuzzy_score(&normalized, &normalize_query(alias))),
+            None => name_score,
+        };
         if score >= threshold {
             scored.push((
                 score,
@@ -131,6 +138,7 @@ pub(crate) fn suggest(
                     pv: pv.to_string(),
                     unique,
                     had_suffix,
+                    alias,
                 },
             ));
         }
@@ -167,6 +175,7 @@ pub(crate) fn suggest(
                     pv: entry.pv.to_string(),
                     unique: true,
                     had_suffix: false,
+                    alias: None,
                 },
             ));
         }

@@ -1,0 +1,689 @@
+{
+  "odata.metadata":"https://opendata.cbs.nl/ODataFeed/OData/86247NED/$metadata#Cbs.OData.WebAPI.TypedDataSet&$select=Code_1,Naam_2,Code_28,Naam_29","value":[
+    {
+      "Code_1":"GM1680    ","Naam_2":"Aa en Hunze                                       ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM0358    ","Naam_2":"Aalsmeer                                          ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0197    ","Naam_2":"Aalten                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0059    ","Naam_2":"Achtkarspelen                                     ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0482    ","Naam_2":"Alblasserdam                                      ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0613    ","Naam_2":"Albrandswaard                                     ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0361    ","Naam_2":"Alkmaar                                           ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0141    ","Naam_2":"Almelo                                            ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0034    ","Naam_2":"Almere                                            ","Code_28":"PV24      ","Naam_29":"Flevoland                                         "
+    },{
+      "Code_1":"GM0484    ","Naam_2":"Alphen aan den Rijn                               ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1723    ","Naam_2":"Alphen-Chaam                                      ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1959    ","Naam_2":"Altena                                            ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0060    ","Naam_2":"Ameland                                           ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0307    ","Naam_2":"Amersfoort                                        ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0362    ","Naam_2":"Amstelveen                                        ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0363    ","Naam_2":"Amsterdam                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0200    ","Naam_2":"Apeldoorn                                         ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0202    ","Naam_2":"Arnhem                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0106    ","Naam_2":"Assen                                             ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM0743    ","Naam_2":"Asten                                             ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0744    ","Naam_2":"Baarle-Nassau                                     ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0308    ","Naam_2":"Baarn                                             ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0489    ","Naam_2":"Barendrecht                                       ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0203    ","Naam_2":"Barneveld                                         ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0888    ","Naam_2":"Beek (L.)                                         ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1954    ","Naam_2":"Beekdaelen                                        ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0889    ","Naam_2":"Beesel                                            ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1945    ","Naam_2":"Berg en Dal                                       ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM1724    ","Naam_2":"Bergeijk                                          ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0893    ","Naam_2":"Bergen (L.)                                       ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0373    ","Naam_2":"Bergen (NH.)                                      ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0748    ","Naam_2":"Bergen op Zoom                                    ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1859    ","Naam_2":"Berkelland                                        ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM1721    ","Naam_2":"Bernheze                                          ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0753    ","Naam_2":"Best                                              ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0209    ","Naam_2":"Beuningen                                         ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0375    ","Naam_2":"Beverwijk                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0310    ","Naam_2":"De Bilt                                           ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM1728    ","Naam_2":"Bladel                                            ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0376    ","Naam_2":"Blaricum                                          ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0377    ","Naam_2":"Bloemendaal                                       ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM1901    ","Naam_2":"Bodegraven-Reeuwijk                               ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0755    ","Naam_2":"Boekel                                            ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1681    ","Naam_2":"Borger-Odoorn                                     ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM0147    ","Naam_2":"Borne                                             ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0654    ","Naam_2":"Borsele                                           ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0757    ","Naam_2":"Boxtel                                            ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0758    ","Naam_2":"Breda                                             ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1876    ","Naam_2":"Bronckhorst                                       ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0213    ","Naam_2":"Brummen                                           ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0899    ","Naam_2":"Brunssum                                          ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0312    ","Naam_2":"Bunnik                                            ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0313    ","Naam_2":"Bunschoten                                        ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0214    ","Naam_2":"Buren                                             ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0502    ","Naam_2":"Capelle aan den IJssel                            ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0383    ","Naam_2":"Castricum                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0109    ","Naam_2":"Coevorden                                         ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM1706    ","Naam_2":"Cranendonck                                       ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0216    ","Naam_2":"Culemborg                                         ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0148    ","Naam_2":"Dalfsen                                           ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM1891    ","Naam_2":"Dantumadiel                                       ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0503    ","Naam_2":"Delft                                             ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0762    ","Naam_2":"Deurne                                            ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0150    ","Naam_2":"Deventer                                          ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0384    ","Naam_2":"Diemen                                            ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM1980    ","Naam_2":"Dijk en Waard                                     ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM1774    ","Naam_2":"Dinkelland                                        ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0221    ","Naam_2":"Doesburg                                          ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0222    ","Naam_2":"Doetinchem                                        ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0766    ","Naam_2":"Dongen                                            ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0505    ","Naam_2":"Dordrecht                                         ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0498    ","Naam_2":"Drechterland                                      ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM1719    ","Naam_2":"Drimmelen                                         ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0303    ","Naam_2":"Dronten                                           ","Code_28":"PV24      ","Naam_29":"Flevoland                                         "
+    },{
+      "Code_1":"GM0225    ","Naam_2":"Druten                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0226    ","Naam_2":"Duiven                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM1711    ","Naam_2":"Echt-Susteren                                     ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0385    ","Naam_2":"Edam-Volendam                                     ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0228    ","Naam_2":"Ede                                               ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0317    ","Naam_2":"Eemnes                                            ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM1979    ","Naam_2":"Eemsdelta                                         ","Code_28":"PV20      ","Naam_29":"Groningen                                         "
+    },{
+      "Code_1":"GM0770    ","Naam_2":"Eersel                                            ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1903    ","Naam_2":"Eijsden-Margraten                                 ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0772    ","Naam_2":"Eindhoven                                         ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0230    ","Naam_2":"Elburg                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0114    ","Naam_2":"Emmen                                             ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM0388    ","Naam_2":"Enkhuizen                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0153    ","Naam_2":"Enschede                                          ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0232    ","Naam_2":"Epe                                               ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0233    ","Naam_2":"Ermelo                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0777    ","Naam_2":"Etten-Leur                                        ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1940    ","Naam_2":"De Fryske Marren                                  ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0779    ","Naam_2":"Geertruidenberg                                   ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1771    ","Naam_2":"Geldrop-Mierlo                                    ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1652    ","Naam_2":"Gemert-Bakel                                      ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0907    ","Naam_2":"Gennep                                            ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0784    ","Naam_2":"Gilze en Rijen                                    ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1924    ","Naam_2":"Goeree-Overflakkee                                ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0664    ","Naam_2":"Goes                                              ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0785    ","Naam_2":"Goirle                                            ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1942    ","Naam_2":"Gooise Meren                                      ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0512    ","Naam_2":"Gorinchem                                         ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0513    ","Naam_2":"Gouda                                             ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0518    ","Naam_2":"'s-Gravenhage                                     ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0014    ","Naam_2":"Groningen                                         ","Code_28":"PV20      ","Naam_29":"Groningen                                         "
+    },{
+      "Code_1":"GM1729    ","Naam_2":"Gulpen-Wittem                                     ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0158    ","Naam_2":"Haaksbergen                                       ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0392    ","Naam_2":"Haarlem                                           ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0394    ","Naam_2":"Haarlemmermeer                                    ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM1655    ","Naam_2":"Halderberge                                       ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0160    ","Naam_2":"Hardenberg                                        ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0243    ","Naam_2":"Harderwijk                                        ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0523    ","Naam_2":"Hardinxveld-Giessendam                            ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0072    ","Naam_2":"Harlingen                                         ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0244    ","Naam_2":"Hattem                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0396    ","Naam_2":"Heemskerk                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0397    ","Naam_2":"Heemstede                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0246    ","Naam_2":"Heerde                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0074    ","Naam_2":"Heerenveen                                        ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0917    ","Naam_2":"Heerlen                                           ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1658    ","Naam_2":"Heeze-Leende                                      ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0399    ","Naam_2":"Heiloo                                            ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0400    ","Naam_2":"Den Helder                                        ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0163    ","Naam_2":"Hellendoorn                                       ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0794    ","Naam_2":"Helmond                                           ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0531    ","Naam_2":"Hendrik-Ido-Ambacht                               ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0164    ","Naam_2":"Hengelo (O.)                                      ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0796    ","Naam_2":"'s-Hertogenbosch                                  ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0252    ","Naam_2":"Heumen                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0797    ","Naam_2":"Heusden                                           ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0534    ","Naam_2":"Hillegom                                          ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0798    ","Naam_2":"Hilvarenbeek                                      ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0402    ","Naam_2":"Hilversum                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM1963    ","Naam_2":"Hoeksche Waard                                    ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1735    ","Naam_2":"Hof van Twente                                    ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM1966    ","Naam_2":"Het Hogeland                                      ","Code_28":"PV20      ","Naam_29":"Groningen                                         "
+    },{
+      "Code_1":"GM1911    ","Naam_2":"Hollands Kroon                                    ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0118    ","Naam_2":"Hoogeveen                                         ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM0405    ","Naam_2":"Hoorn                                             ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM1507    ","Naam_2":"Horst aan de Maas                                 ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0321    ","Naam_2":"Houten                                            ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0406    ","Naam_2":"Huizen                                            ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0677    ","Naam_2":"Hulst                                             ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0353    ","Naam_2":"IJsselstein                                       ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM1884    ","Naam_2":"Kaag en Braassem                                  ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0166    ","Naam_2":"Kampen                                            ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0678    ","Naam_2":"Kapelle                                           ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0537    ","Naam_2":"Katwijk                                           ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0928    ","Naam_2":"Kerkrade                                          ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1598    ","Naam_2":"Koggenland                                        ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0542    ","Naam_2":"Krimpen aan den IJssel                            ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1931    ","Naam_2":"Krimpenerwaard                                    ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1659    ","Naam_2":"Laarbeek                                          ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1982    ","Naam_2":"Land van Cuijk                                    ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0882    ","Naam_2":"Landgraaf                                         ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0415    ","Naam_2":"Landsmeer                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM1621    ","Naam_2":"Lansingerland                                     ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0417    ","Naam_2":"Laren (NH.)                                       ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0080    ","Naam_2":"Leeuwarden                                        ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0546    ","Naam_2":"Leiden                                            ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0547    ","Naam_2":"Leiderdorp                                        ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1916    ","Naam_2":"Leidschendam-Voorburg                             ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0995    ","Naam_2":"Lelystad                                          ","Code_28":"PV24      ","Naam_29":"Flevoland                                         "
+    },{
+      "Code_1":"GM1640    ","Naam_2":"Leudal                                            ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0327    ","Naam_2":"Leusden                                           ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM1705    ","Naam_2":"Lingewaard                                        ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0553    ","Naam_2":"Lisse                                             ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0262    ","Naam_2":"Lochem                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0809    ","Naam_2":"Loon op Zand                                      ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0331    ","Naam_2":"Lopik                                             ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0168    ","Naam_2":"Losser                                            ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0263    ","Naam_2":"Maasdriel                                         ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM1641    ","Naam_2":"Maasgouw                                          ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1991    ","Naam_2":"Maashorst                                         ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0556    ","Naam_2":"Maassluis                                         ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0935    ","Naam_2":"Maastricht                                        ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0420    ","Naam_2":"Medemblik                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0938    ","Naam_2":"Meerssen                                          ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1948    ","Naam_2":"Meierijstad                                       ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0119    ","Naam_2":"Meppel                                            ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM0687    ","Naam_2":"Middelburg (Z.)                                   ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM1842    ","Naam_2":"Midden-Delfland                                   ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1731    ","Naam_2":"Midden-Drenthe                                    ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM1952    ","Naam_2":"Midden-Groningen                                  ","Code_28":"PV20      ","Naam_29":"Groningen                                         "
+    },{
+      "Code_1":"GM1709    ","Naam_2":"Moerdijk                                          ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1978    ","Naam_2":"Molenlanden                                       ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1955    ","Naam_2":"Montferland                                       ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0335    ","Naam_2":"Montfoort                                         ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0944    ","Naam_2":"Mook en Middelaar                                 ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1740    ","Naam_2":"Neder-Betuwe                                      ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0946    ","Naam_2":"Nederweert                                        ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0356    ","Naam_2":"Nieuwegein                                        ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0569    ","Naam_2":"Nieuwkoop                                         ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0267    ","Naam_2":"Nijkerk                                           ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0268    ","Naam_2":"Nijmegen                                          ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM1930    ","Naam_2":"Nissewaard                                        ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1970    ","Naam_2":"Noardeast-Frysl\u00e2n                                 ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM1695    ","Naam_2":"Noord-Beveland                                    ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM1699    ","Naam_2":"Noordenveld                                       ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM0171    ","Naam_2":"Noordoostpolder                                   ","Code_28":"PV24      ","Naam_29":"Flevoland                                         "
+    },{
+      "Code_1":"GM0575    ","Naam_2":"Noordwijk                                         ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0820    ","Naam_2":"Nuenen, Gerwen en Nederwetten                     ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0302    ","Naam_2":"Nunspeet                                          ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0579    ","Naam_2":"Oegstgeest                                        ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0823    ","Naam_2":"Oirschot                                          ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0824    ","Naam_2":"Oisterwijk                                        ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1895    ","Naam_2":"Oldambt                                           ","Code_28":"PV20      ","Naam_29":"Groningen                                         "
+    },{
+      "Code_1":"GM0269    ","Naam_2":"Oldebroek                                         ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0173    ","Naam_2":"Oldenzaal                                         ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM1773    ","Naam_2":"Olst-Wijhe                                        ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0175    ","Naam_2":"Ommen                                             ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM1586    ","Naam_2":"Oost Gelre                                        ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0826    ","Naam_2":"Oosterhout                                        ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0085    ","Naam_2":"Ooststellingwerf                                  ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0431    ","Naam_2":"Oostzaan                                          ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0432    ","Naam_2":"Opmeer                                            ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0086    ","Naam_2":"Opsterland                                        ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0828    ","Naam_2":"Oss                                               ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1509    ","Naam_2":"Oude IJsselstreek                                 ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0437    ","Naam_2":"Ouder-Amstel                                      ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0589    ","Naam_2":"Oudewater                                         ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM1734    ","Naam_2":"Overbetuwe                                        ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0590    ","Naam_2":"Papendrecht                                       ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1894    ","Naam_2":"Peel en Maas                                      ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0765    ","Naam_2":"Pekela                                            ","Code_28":"PV20      ","Naam_29":"Groningen                                         "
+    },{
+      "Code_1":"GM1926    ","Naam_2":"Pijnacker-Nootdorp                                ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0439    ","Naam_2":"Purmerend                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0273    ","Naam_2":"Putten                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0177    ","Naam_2":"Raalte                                            ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0703    ","Naam_2":"Reimerswaal                                       ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0274    ","Naam_2":"Renkum                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0339    ","Naam_2":"Renswoude                                         ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM1667    ","Naam_2":"Reusel-De Mierden                                 ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0275    ","Naam_2":"Rheden                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0340    ","Naam_2":"Rhenen                                            ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0597    ","Naam_2":"Ridderkerk                                        ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1742    ","Naam_2":"Rijssen-Holten                                    ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0603    ","Naam_2":"Rijswijk (ZH.)                                    ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1669    ","Naam_2":"Roerdalen                                         ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0957    ","Naam_2":"Roermond                                          ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0736    ","Naam_2":"De Ronde Venen                                    ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM1674    ","Naam_2":"Roosendaal                                        ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0599    ","Naam_2":"Rotterdam                                         ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0277    ","Naam_2":"Rozendaal                                         ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0840    ","Naam_2":"Rucphen                                           ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0441    ","Naam_2":"Schagen                                           ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0279    ","Naam_2":"Scherpenzeel                                      ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0606    ","Naam_2":"Schiedam                                          ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0088    ","Naam_2":"Schiermonnikoog                                   ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM1676    ","Naam_2":"Schouwen-Duiveland                                ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0965    ","Naam_2":"Simpelveld                                        ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0845    ","Naam_2":"Sint-Michielsgestel                               ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1883    ","Naam_2":"Sittard-Geleen                                    ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0610    ","Naam_2":"Sliedrecht                                        ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1714    ","Naam_2":"Sluis                                             ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0090    ","Naam_2":"Smallingerland                                    ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0342    ","Naam_2":"Soest                                             ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0847    ","Naam_2":"Someren                                           ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0848    ","Naam_2":"Son en Breugel                                    ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0037    ","Naam_2":"Stadskanaal                                       ","Code_28":"PV20      ","Naam_29":"Groningen                                         "
+    },{
+      "Code_1":"GM0180    ","Naam_2":"Staphorst                                         ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0532    ","Naam_2":"Stede Broec                                       ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0851    ","Naam_2":"Steenbergen                                       ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1708    ","Naam_2":"Steenwijkerland                                   ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0971    ","Naam_2":"Stein (L.)                                        ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1904    ","Naam_2":"Stichtse Vecht                                    ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM1900    ","Naam_2":"S\u00fadwest-Frysl\u00e2n                                   ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0715    ","Naam_2":"Terneuzen                                         ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0093    ","Naam_2":"Terschelling                                      ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0448    ","Naam_2":"Texel                                             ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM1525    ","Naam_2":"Teylingen                                         ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0716    ","Naam_2":"Tholen                                            ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0281    ","Naam_2":"Tiel                                              ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0855    ","Naam_2":"Tilburg                                           ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0183    ","Naam_2":"Tubbergen                                         ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM1700    ","Naam_2":"Twenterand                                        ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM1730    ","Naam_2":"Tynaarlo                                          ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM0737    ","Naam_2":"Tytsjerksteradiel                                 ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0450    ","Naam_2":"Uitgeest                                          ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0451    ","Naam_2":"Uithoorn                                          ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0184    ","Naam_2":"Urk                                               ","Code_28":"PV24      ","Naam_29":"Flevoland                                         "
+    },{
+      "Code_1":"GM0344    ","Naam_2":"Utrecht                                           ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM1581    ","Naam_2":"Utrechtse Heuvelrug                               ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0981    ","Naam_2":"Vaals                                             ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0994    ","Naam_2":"Valkenburg aan de Geul                            ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0858    ","Naam_2":"Valkenswaard                                      ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0047    ","Naam_2":"Veendam                                           ","Code_28":"PV20      ","Naam_29":"Groningen                                         "
+    },{
+      "Code_1":"GM0345    ","Naam_2":"Veenendaal                                        ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0717    ","Naam_2":"Veere                                             ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0861    ","Naam_2":"Veldhoven                                         ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0453    ","Naam_2":"Velsen                                            ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0983    ","Naam_2":"Venlo                                             ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM0984    ","Naam_2":"Venray                                            ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1961    ","Naam_2":"Vijfheerenlanden                                  ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0622    ","Naam_2":"Vlaardingen                                       ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0096    ","Naam_2":"Vlieland                                          ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0718    ","Naam_2":"Vlissingen                                        ","Code_28":"PV29      ","Naam_29":"Zeeland                                           "
+    },{
+      "Code_1":"GM0986    ","Naam_2":"Voerendaal                                        ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1992    ","Naam_2":"Voorne aan Zee                                    ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0626    ","Naam_2":"Voorschoten                                       ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0285    ","Naam_2":"Voorst                                            ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0865    ","Naam_2":"Vught                                             ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM1949    ","Naam_2":"Waadhoeke                                         ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0866    ","Naam_2":"Waalre                                            ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0867    ","Naam_2":"Waalwijk                                          ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0627    ","Naam_2":"Waddinxveen                                       ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0289    ","Naam_2":"Wageningen                                        ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0629    ","Naam_2":"Wassenaar                                         ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0852    ","Naam_2":"Waterland                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0988    ","Naam_2":"Weert                                             ","Code_28":"PV31      ","Naam_29":"Limburg                                           "
+    },{
+      "Code_1":"GM1960    ","Naam_2":"West Betuwe                                       ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0668    ","Naam_2":"West Maas en Waal                                 ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM1969    ","Naam_2":"Westerkwartier                                    ","Code_28":"PV20      ","Naam_29":"Groningen                                         "
+    },{
+      "Code_1":"GM1701    ","Naam_2":"Westerveld                                        ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM0293    ","Naam_2":"Westervoort                                       ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM1950    ","Naam_2":"Westerwolde                                       ","Code_28":"PV20      ","Naam_29":"Groningen                                         "
+    },{
+      "Code_1":"GM1783    ","Naam_2":"Westland                                          ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0098    ","Naam_2":"Weststellingwerf                                  ","Code_28":"PV21      ","Naam_29":"Frysl\u00e2n                                           "
+    },{
+      "Code_1":"GM0189    ","Naam_2":"Wierden                                           ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0296    ","Naam_2":"Wijchen                                           ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM1696    ","Naam_2":"Wijdemeren                                        ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0352    ","Naam_2":"Wijk bij Duurstede                                ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0294    ","Naam_2":"Winterswijk                                       ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0873    ","Naam_2":"Woensdrecht                                       ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0632    ","Naam_2":"Woerden                                           ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM1690    ","Naam_2":"De Wolden                                         ","Code_28":"PV22      ","Naam_29":"Drenthe                                           "
+    },{
+      "Code_1":"GM0880    ","Naam_2":"Wormerland                                        ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0351    ","Naam_2":"Woudenberg                                        ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0479    ","Naam_2":"Zaanstad                                          ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0297    ","Naam_2":"Zaltbommel                                        ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0473    ","Naam_2":"Zandvoort                                         ","Code_28":"PV27      ","Naam_29":"Noord-Holland                                     "
+    },{
+      "Code_1":"GM0050    ","Naam_2":"Zeewolde                                          ","Code_28":"PV24      ","Naam_29":"Flevoland                                         "
+    },{
+      "Code_1":"GM0355    ","Naam_2":"Zeist                                             ","Code_28":"PV26      ","Naam_29":"Utrecht                                           "
+    },{
+      "Code_1":"GM0299    ","Naam_2":"Zevenaar                                          ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM0637    ","Naam_2":"Zoetermeer                                        ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0638    ","Naam_2":"Zoeterwoude                                       ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM1892    ","Naam_2":"Zuidplas                                          ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0879    ","Naam_2":"Zundert                                           ","Code_28":"PV30      ","Naam_29":"Noord-Brabant                                     "
+    },{
+      "Code_1":"GM0301    ","Naam_2":"Zutphen                                           ","Code_28":"PV25      ","Naam_29":"Gelderland                                        "
+    },{
+      "Code_1":"GM1896    ","Naam_2":"Zwartewaterland                                   ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    },{
+      "Code_1":"GM0642    ","Naam_2":"Zwijndrecht                                       ","Code_28":"PV28      ","Naam_29":"Zuid-Holland                                      "
+    },{
+      "Code_1":"GM0193    ","Naam_2":"Zwolle                                            ","Code_28":"PV23      ","Naam_29":"Overijssel                                        "
+    }
+  ]
+}
