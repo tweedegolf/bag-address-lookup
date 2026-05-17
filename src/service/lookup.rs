@@ -1,21 +1,15 @@
 use crate::database::DatabaseHandle;
 
-use super::{Response, json_error, json_ok};
+use super::{Response, json_error, json_ok, query::parse_query};
 
 /// Handle the `/lookup` endpoint using `pc` (postal code) and `n` (house number).
 pub(crate) fn handle_lookup(database: &DatabaseHandle, query: &str) -> Response {
     let mut postal_code = None;
     let mut house_number = None;
 
-    for pair in query.split('&') {
-        if pair.is_empty() {
-            continue;
-        }
-        let Some((key, value)) = pair.split_once('=') else {
-            continue;
-        };
-        match key {
-            "pc" => postal_code = Some(value.to_string()),
+    for (key, value) in parse_query(query) {
+        match key.as_str() {
+            "pc" => postal_code = Some(value),
             "n" => house_number = value.parse::<u32>().ok(),
             _ => {}
         }

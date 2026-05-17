@@ -28,6 +28,7 @@ use crate::database::DatabaseHandle;
 mod localities_list;
 mod lookup;
 mod municipalities;
+mod query;
 mod suggest;
 
 /// Minimal response wrapper for handler results.

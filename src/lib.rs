@@ -17,8 +17,11 @@ mod create;
 #[cfg(feature = "create")]
 mod parsing;
 
-pub use database::{Database, DatabaseError, DatabaseHandle, NumberRange, encode_pc};
-pub use suggest::{DEFAULT_SUGGEST_LIMIT, DEFAULT_SUGGEST_THRESHOLD, SuggestEntry};
+pub use database::{
+    Database, DatabaseError, DatabaseHandle, LocalityDetail, MunicipalityDetail, NumberRange,
+    encode_pc,
+};
+pub use suggest::{DEFAULT_SUGGEST_LIMIT, DEFAULT_SUGGEST_THRESHOLD};
 
 #[cfg(feature = "webservice")]
 pub use service::{serve, serve_with_shutdown};

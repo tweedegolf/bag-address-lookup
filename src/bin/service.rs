@@ -45,8 +45,11 @@ fn cmd_lookup(postal_code: &str, house_number_arg: &str) -> i32 {
 #[cfg(feature = "cli")]
 fn cmd_list_localities() -> i32 {
     let database = load_database();
-    for (wp, wp_code, gm, gm_code, pv, _unique, _had_suffix) in database.locality_details() {
-        println!("{wp}\t{wp_code}\t{gm}\t{gm_code}\t{pv}");
+    for d in database.locality_details() {
+        println!(
+            "{}\t{}\t{}\t{}\t{}",
+            d.name, d.code, d.municipality, d.municipality_code, d.province
+        );
     }
     0
 }
@@ -54,8 +57,8 @@ fn cmd_list_localities() -> i32 {
 #[cfg(feature = "cli")]
 fn cmd_list_municipalities() -> i32 {
     let database = load_database();
-    for (gm, gm_code, pv, _unique, _had_suffix) in database.municipality_details() {
-        println!("{gm}\t{gm_code}\t{pv}");
+    for d in database.municipality_details() {
+        println!("{}\t{}\t{}", d.name, d.code, d.province);
     }
     0
 }

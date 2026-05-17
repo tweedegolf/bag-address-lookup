@@ -44,6 +44,47 @@ pub struct Database {
     pub municipality_had_suffix: Vec<bool>,
 }
 
+/// Details for one locality, as returned by [`DatabaseHandle::locality_details`].
+#[derive(Debug, Clone, Copy)]
+pub struct LocalityDetail<'a> {
+    /// Locality (woonplaats) name.
+    pub name: &'a str,
+    /// BAG woonplaatsidentificatiecode — uniquely identifies the woonplaats
+    /// even when names are shared across entries.
+    pub code: u16,
+    /// Name of the municipality this locality belongs to.
+    pub municipality: &'a str,
+    /// BAG gemeentecode of that municipality.
+    pub municipality_code: u16,
+    /// Two-letter province code of that municipality.
+    pub province: &'a str,
+    /// True when this name appears only here across all localities and
+    /// municipalities; sharing a name with the parent municipality does not
+    /// count as a collision.
+    pub unique: bool,
+    /// True when the source BAG name carried a stripped province suffix
+    /// (e.g. `Loo Gld` → `Loo`).
+    pub had_suffix: bool,
+}
+
+/// Details for one municipality, as returned by
+/// [`DatabaseHandle::municipality_details`].
+#[derive(Debug, Clone, Copy)]
+pub struct MunicipalityDetail<'a> {
+    /// Municipality (gemeente) name.
+    pub name: &'a str,
+    /// BAG gemeentecode.
+    pub code: u16,
+    /// Two-letter province code.
+    pub province: &'a str,
+    /// True when this name appears only here across all localities and
+    /// municipalities.
+    pub unique: bool,
+    /// True when the CBS name carried a stripped province suffix
+    /// (e.g. `Hengelo (O.)` → `Hengelo`).
+    pub had_suffix: bool,
+}
+
 pub struct DatabaseView {
     bytes: &'static [u8],
     locality_count: u32,
@@ -145,36 +186,31 @@ impl DatabaseHandle {
         }
     }
 
-    /// Iterate over all localities, yielding (name, locality_code, municipality_name, municipality_code, province_code, name_unique, had_suffix).
+    /// Return details for every locality that has a known municipality.
     ///
-    /// `locality_code` is the BAG woonplaatsidentificatiecode, which uniquely
-    /// identifies the Woonplaats even when names are shared across entries.
-    /// `name_unique` is true when this locality's name appears only here
-    /// across all localities and municipalities; a locality sharing its name
-    /// with its own parent municipality is not treated as a collision.
-    /// `had_suffix` is true when the source BAG name carried a stripped
-    /// province suffix (e.g. `Loo Gld` → `Loo`).
-    pub fn locality_details(&self) -> Vec<(&str, u16, &str, u16, &str, bool, bool)> {
+    /// See [`LocalityDetail`] for the meaning of each field.
+    pub fn locality_details(&self) -> Vec<LocalityDetail<'_>> {
         match self {
             DatabaseHandle::Decoded(db) => db.locality_details(),
             DatabaseHandle::View(view) => view.locality_details(),
         }
     }
 
-    /// Iterate over all municipalities, yielding (name, code, province_name, name_unique, had_suffix).
+    /// Return details for every municipality.
     ///
-    /// `had_suffix` is true when the CBS name carried a stripped province
-    /// suffix (e.g. `Hengelo (O.)` → `Hengelo`).
-    pub fn municipality_details(&self) -> Vec<(&str, u16, &str, bool, bool)> {
+    /// See [`MunicipalityDetail`] for the meaning of each field.
+    pub fn municipality_details(&self) -> Vec<MunicipalityDetail<'_>> {
         match self {
             DatabaseHandle::Decoded(db) => db.municipality_details(),
             DatabaseHandle::View(view) => view.municipality_details(),
         }
     }
 
-    /// Fuzzy-search localities and municipalities for `query`.
+    /// Fuzzy-search localities and municipalities for `query`, returning the
+    /// matching names.
     ///
-    /// When `include_municipalities` is false, only localities are returned.
+    /// When `include_municipalities` is false, municipality names are omitted.
+    /// When `include_aliases` is false, locality aliases are omitted.
     ///
     /// See [`crate::suggest::suggest`] for the scoring details.
     pub fn suggest(
@@ -183,8 +219,16 @@ impl DatabaseHandle {
         threshold: f32,
         limit: usize,
         include_municipalities: bool,
-    ) -> Vec<crate::suggest::SuggestEntry> {
-        crate::suggest::suggest(self, query, threshold, limit, include_municipalities)
+        include_aliases: bool,
+    ) -> Vec<String> {
+        crate::suggest::suggest(
+            self,
+            query,
+            threshold,
+            limit,
+            include_municipalities,
+            include_aliases,
+        )
     }
 
     /// Load the embedded BAG database.

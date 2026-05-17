@@ -215,7 +215,7 @@ impl Database {
         self.provinces.get(index as usize).map(String::as_str)
     }
 
-    pub(crate) fn locality_details(&self) -> Vec<(&str, u16, &str, u16, &str, bool, bool)> {
+    pub(crate) fn locality_details(&self) -> Vec<super::LocalityDetail<'_>> {
         let locality_refs: Vec<&str> = self.localities.iter().map(String::as_str).collect();
         let muni_refs: Vec<&str> = self.municipalities.iter().map(String::as_str).collect();
         let flags = super::util::compute_unique_flags(
@@ -251,20 +251,20 @@ impl Database {
             let p_code = self.province_name(p_idx).unwrap_or("");
             let unique = flags.locality_unique.get(i).copied().unwrap_or(false);
             let had_suffix = self.locality_had_suffix.get(i).copied().unwrap_or(false);
-            result.push((
-                name.as_str(),
-                wp_code,
-                m_name,
-                m_code,
-                p_code,
+            result.push(super::LocalityDetail {
+                name: name.as_str(),
+                code: wp_code,
+                municipality: m_name,
+                municipality_code: m_code,
+                province: p_code,
                 unique,
                 had_suffix,
-            ));
+            });
         }
         result
     }
 
-    pub(crate) fn municipality_details(&self) -> Vec<(&str, u16, &str, bool, bool)> {
+    pub(crate) fn municipality_details(&self) -> Vec<super::MunicipalityDetail<'_>> {
         let locality_refs: Vec<&str> = self.localities.iter().map(String::as_str).collect();
         let muni_refs: Vec<&str> = self.municipalities.iter().map(String::as_str).collect();
         let flags = super::util::compute_unique_flags(
@@ -290,7 +290,13 @@ impl Database {
                 .get(i)
                 .copied()
                 .unwrap_or(false);
-            result.push((name.as_str(), code, p_name, unique, had_suffix));
+            result.push(super::MunicipalityDetail {
+                name: name.as_str(),
+                code,
+                province: p_name,
+                unique,
+                had_suffix,
+            });
         }
         result
     }

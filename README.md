@@ -55,6 +55,9 @@ Example response:
 ["Amsterdam","Amstelveen"]
 ```
 
+Names that originally carried a disambiguating province suffix get a normalized province
+code appended, e.g. `Bergen` in Limburg is returned as `Bergen (LI)`.
+
 If the `wp` query param is missing, the service responds with `400` and:
 
 ```json
@@ -66,6 +69,13 @@ Municipality names are included in the suggestions by default. Pass
 
 ```sh
 curl "http://127.0.0.1:8080/suggest?wp=Amster&municipalities=false"
+```
+
+Frisian/Dutch locality aliases are not suggested by default. Pass
+`aliases=true` to also offer alias names as possible suggestions:
+
+```sh
+curl "http://127.0.0.1:8080/suggest?wp=Boalsert&aliases=true"
 ```
 
 List all localities with their municipality:

@@ -1,26 +1,22 @@
 use crate::{
     database::DatabaseHandle,
-    suggest::{DEFAULT_SUGGEST_LIMIT, DEFAULT_SUGGEST_THRESHOLD, SuggestEntry},
+    suggest::{DEFAULT_SUGGEST_LIMIT, DEFAULT_SUGGEST_THRESHOLD},
 };
 
-use super::{Response, json_error};
+use super::{Response, json_error, query::parse_query};
 
-/// Handle the `/suggest` endpoint by returning locality and municipality
-/// suggestions for the `wp` query param.
+/// Handle the `/suggest` endpoint by returning a JSON list of locality and
+/// municipality names matching the `wp` query param.
 pub(crate) fn handle_suggest(database: &DatabaseHandle, query: &str) -> Response {
     let mut query_text = None;
     let mut include_municipalities = true;
+    let mut include_aliases = false;
 
-    for pair in query.split('&') {
-        if pair.is_empty() {
-            continue;
-        }
-        let Some((key, value)) = pair.split_once('=') else {
-            continue;
-        };
-        match key {
-            "wp" => query_text = Some(percent_decode(value)),
-            "municipalities" => include_municipalities = parse_bool(value),
+    for (key, value) in parse_query(query) {
+        match key.as_str() {
+            "wp" => query_text = Some(value),
+            "municipalities" => include_municipalities = parse_bool(&value),
+            "aliases" => include_aliases = parse_bool(&value),
             _ => {}
         }
     }
@@ -31,117 +27,37 @@ pub(crate) fn handle_suggest(database: &DatabaseHandle, query: &str) -> Response
 
     Response::new(
         200,
-        suggest_json(database, &query_text, include_municipalities),
+        suggest_json(
+            database,
+            &query_text,
+            include_municipalities,
+            include_aliases,
+        ),
     )
 }
 
 /// Parse a boolean-ish query parameter. `false`, `0` and `no` (case-insensitive)
-/// are false; anything else (including a malformed value) keeps the default of
-/// including municipalities.
+/// are false; anything else (including a malformed or empty value) is true.
 fn parse_bool(value: &str) -> bool {
     !matches!(value.to_ascii_lowercase().as_str(), "false" | "0" | "no")
 }
 
-/// Decode a URL form-encoded query value: `+` becomes space, `%XX` becomes the
-/// byte with hex value `XX`. Malformed `%` escapes are emitted literally and
-/// decoding continues; if the decoded bytes are not valid UTF-8 the original
-/// input is returned unchanged.
-fn percent_decode(value: &str) -> String {
-    let bytes = value.as_bytes();
-    let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        match bytes[i] {
-            b'+' => {
-                out.push(b' ');
-                i += 1;
-            }
-            b'%' if i + 2 < bytes.len() => {
-                let hi = (bytes[i + 1] as char).to_digit(16);
-                let lo = (bytes[i + 2] as char).to_digit(16);
-                if let (Some(h), Some(l)) = (hi, lo) {
-                    out.push((h * 16 + l) as u8);
-                    i += 3;
-                } else {
-                    out.push(b'%');
-                    i += 1;
-                }
-            }
-            b => {
-                out.push(b);
-                i += 1;
-            }
-        }
-    }
-    String::from_utf8(out).unwrap_or_else(|_| value.to_string())
-}
-
-fn suggest_json(database: &DatabaseHandle, query: &str, include_municipalities: bool) -> String {
-    let results = database.suggest(
+/// Build the JSON response body: a flat array of suggestion names.
+fn suggest_json(
+    database: &DatabaseHandle,
+    query: &str,
+    include_municipalities: bool,
+    include_aliases: bool,
+) -> String {
+    let names = database.suggest(
         query,
         suggest_threshold(),
         DEFAULT_SUGGEST_LIMIT,
         include_municipalities,
+        include_aliases,
     );
 
-    let mut body = String::from("[");
-    for (i, entry) in results.iter().enumerate() {
-        if i > 0 {
-            body.push(',');
-        }
-        append_entry_json(entry, &mut body);
-    }
-    body.push(']');
-    body
-}
-
-fn append_entry_json(entry: &SuggestEntry, body: &mut String) {
-    match entry {
-        SuggestEntry::Locality {
-            wp,
-            wp_code,
-            gm,
-            gm_code,
-            pv,
-            unique,
-            had_suffix,
-            alias,
-        } => {
-            body.push_str(&format!(
-                "{{\"wp\":{},\"wp_code\":{},\"gm\":{},\"gm_code\":{},\"pv\":{},\"unique\":{},\"had_suffix\":{}",
-                serde_json::to_string(wp).expect("serialize wp"),
-                wp_code,
-                serde_json::to_string(gm).expect("serialize gm"),
-                gm_code,
-                serde_json::to_string(pv).expect("serialize pv"),
-                unique,
-                had_suffix,
-            ));
-            if let Some(alias) = alias {
-                body.push_str(&format!(
-                    ",\"alias\":{}",
-                    serde_json::to_string(alias).expect("serialize alias"),
-                ));
-            }
-            body.push('}');
-        }
-        SuggestEntry::Municipality {
-            gm,
-            gm_code,
-            pv,
-            unique,
-            had_suffix,
-        } => {
-            body.push_str(&format!(
-                "{{\"gm\":{},\"gm_code\":{},\"pv\":{},\"unique\":{},\"had_suffix\":{}}}",
-                serde_json::to_string(gm).expect("serialize gm"),
-                gm_code,
-                serde_json::to_string(pv).expect("serialize pv"),
-                unique,
-                had_suffix,
-            ));
-        }
-    }
+    serde_json::to_string(&names).expect("serialize suggestions")
 }
 
 /// Read the minimum fuzzy-match score from the environment.
@@ -157,7 +73,7 @@ fn suggest_threshold() -> f32 {
 mod tests {
     use super::{
         super::test_utils::{send_request, test_database},
-        parse_bool, percent_decode,
+        parse_bool,
     };
     use std::sync::Arc;
 
@@ -171,32 +87,29 @@ mod tests {
         .await;
 
         assert!(response.starts_with("HTTP/1.1 200 OK"));
-        assert!(response.contains("\"wp\":\"Amsterdam\""));
-        assert!(response.contains("\"wp_code\":"));
-        assert!(response.contains("\"gm\":\"Amsterdam\""));
-        assert!(response.contains("\"gm_code\":"));
-        assert!(response.contains("\"pv\":"));
+        // The body is a flat JSON array of names.
+        assert!(response.contains("[\"Amsterdam\"]"));
     }
 
     #[tokio::test]
-    async fn suggest_includes_alias_for_fryslan_locality() {
+    async fn suggest_includes_alias_when_requested() {
+        // "Boalsert" is the Frisian alias for the official BAG name "Bolsward".
+        // With aliases enabled it is offered as a suggestion in its own right.
         let db = Arc::new(test_database());
         let response = send_request(
-            "GET /suggest?wp=Bolsward HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            "GET /suggest?wp=Boalsert&aliases=true HTTP/1.1\r\nHost: localhost\r\n\r\n",
             db,
         )
         .await;
 
         assert!(response.starts_with("HTTP/1.1 200 OK"));
-        assert!(response.contains("\"wp\":\"Bolsward\""));
-        assert!(response.contains("\"alias\":\"Boalsert\""));
+        assert!(response.contains("\"Boalsert\""));
     }
 
     #[tokio::test]
-    async fn suggest_matches_on_alias() {
-        // "Boalsert" is the Frisian alias for the official BAG name "Bolsward";
-        // the official name shares no substring with the alias, so a hit here
-        // proves the alias participated in scoring.
+    async fn suggest_omits_aliases_by_default() {
+        // Without the aliases param the Frisian alias is not a candidate, and
+        // "Boalsert" is too dissimilar from "Bolsward" to match on its own.
         let db = Arc::new(test_database());
         let response = send_request(
             "GET /suggest?wp=Boalsert HTTP/1.1\r\nHost: localhost\r\n\r\n",
@@ -205,22 +118,8 @@ mod tests {
         .await;
 
         assert!(response.starts_with("HTTP/1.1 200 OK"));
-        assert!(response.contains("\"wp\":\"Bolsward\""));
-        assert!(response.contains("\"alias\":\"Boalsert\""));
-    }
-
-    #[tokio::test]
-    async fn suggest_omits_alias_when_locality_has_none() {
-        let db = Arc::new(test_database());
-        let response = send_request(
-            "GET /suggest?wp=Amster HTTP/1.1\r\nHost: localhost\r\n\r\n",
-            db,
-        )
-        .await;
-
-        assert!(response.starts_with("HTTP/1.1 200 OK"));
-        assert!(response.contains("\"wp\":\"Amsterdam\""));
-        assert!(!response.contains("\"alias\""));
+        assert!(!response.contains("Boalsert"));
+        assert!(!response.contains("Bolsward"));
     }
 
     #[tokio::test]
@@ -233,55 +132,49 @@ mod tests {
         )
         .await;
         assert!(response.starts_with("HTTP/1.1 200 OK"));
-        assert!(response.contains("\"wp\":\"Kralendijk\""));
-        assert!(response.contains("\"gm\":\"Bonaire\""));
-        assert!(response.contains("\"pv\":\"BES\""));
+        assert!(response.contains("\"Kralendijk\""));
 
         let response = send_request(
             "GET /suggest?wp=Saba HTTP/1.1\r\nHost: localhost\r\n\r\n",
             db.clone(),
         )
         .await;
-        assert!(response.contains("\"gm\":\"Saba\""));
-        assert!(response.contains("\"pv\":\"BES\""));
+        assert!(response.contains("\"Saba\""));
 
         let response = send_request(
             "GET /suggest?wp=Eustatius HTTP/1.1\r\nHost: localhost\r\n\r\n",
             db,
         )
         .await;
-        assert!(response.contains("\"gm\":\"Sint Eustatius\""));
+        assert!(response.contains("\"Sint Eustatius\""));
     }
 
     #[tokio::test]
     async fn suggest_includes_municipalities_by_default() {
+        // "Súdwest-Fryslân" is a municipality with no matching locality, so it
+        // can only appear when municipality names are suggested.
         let db = Arc::new(test_database());
         let response = send_request(
-            "GET /suggest?wp=Amster HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            "GET /suggest?wp=S%C3%BAdwest HTTP/1.1\r\nHost: localhost\r\n\r\n",
             db,
         )
         .await;
 
         assert!(response.starts_with("HTTP/1.1 200 OK"));
-        // The standalone municipality entry serializes as an object starting
-        // with `gm` (locality entries start with `wp`).
-        assert!(response.contains("{\"gm\":\"Amsterdam\""));
+        assert!(response.contains("\"Súdwest-Fryslân\""));
     }
 
     #[tokio::test]
     async fn suggest_excludes_municipalities_when_requested() {
         let db = Arc::new(test_database());
         let response = send_request(
-            "GET /suggest?wp=Amster&municipalities=false HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            "GET /suggest?wp=S%C3%BAdwest&municipalities=false HTTP/1.1\r\nHost: localhost\r\n\r\n",
             db,
         )
         .await;
 
         assert!(response.starts_with("HTTP/1.1 200 OK"));
-        // The locality is still suggested...
-        assert!(response.contains("\"wp\":\"Amsterdam\""));
-        // ...but the standalone municipality entry is gone.
-        assert!(!response.contains("{\"gm\":\"Amsterdam\""));
+        assert!(!response.contains("Súdwest-Fryslân"));
     }
 
     #[tokio::test]
@@ -307,22 +200,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn suggest_decodes_plus_as_space() {
-        // `Amster+` decodes to `Amster ` which normalize_query trims back to
-        // `amster`, matching Amsterdam. Without decoding, the raw `Amster+`
-        // would fail to match.
-        let db = Arc::new(test_database());
-        let response = send_request(
-            "GET /suggest?wp=Amster+ HTTP/1.1\r\nHost: localhost\r\n\r\n",
-            db,
-        )
-        .await;
-
-        assert!(response.starts_with("HTTP/1.1 200 OK"));
-        assert!(response.contains("\"wp\":\"Amsterdam\""));
-    }
-
-    #[tokio::test]
     async fn suggest_decodes_percent_encoded_space() {
         let db = Arc::new(test_database());
         let response = send_request(
@@ -332,53 +209,7 @@ mod tests {
         .await;
 
         assert!(response.starts_with("HTTP/1.1 200 OK"));
-        assert!(response.contains("\"wp\":\"Amsterdam\""));
-    }
-
-    #[test]
-    fn percent_decode_plain_text_passthrough() {
-        assert_eq!(percent_decode("Amsterdam"), "Amsterdam");
-    }
-
-    #[test]
-    fn percent_decode_plus_becomes_space() {
-        assert_eq!(percent_decode("Den+Haag"), "Den Haag");
-    }
-
-    #[test]
-    fn percent_decode_percent_20_becomes_space() {
-        assert_eq!(percent_decode("Den%20Haag"), "Den Haag");
-    }
-
-    #[test]
-    fn percent_decode_multibyte_utf8() {
-        // `%C3%A9` is UTF-8 for `é`.
-        assert_eq!(percent_decode("caf%C3%A9"), "café");
-    }
-
-    #[test]
-    fn percent_decode_malformed_escape_is_literal() {
-        // Non-hex follow-up: emit `%` literally, continue decoding the rest.
-        assert_eq!(percent_decode("a%ZZb+c"), "a%ZZb c");
-    }
-
-    #[test]
-    fn percent_decode_trailing_percent_is_literal() {
-        // No room for two hex digits: emit `%` literally.
-        assert_eq!(percent_decode("ab%"), "ab%");
-        assert_eq!(percent_decode("ab%4"), "ab%4");
-    }
-
-    #[test]
-    fn percent_decode_invalid_utf8_falls_back_to_raw() {
-        // `%FF` is not valid UTF-8 on its own; we keep the input verbatim.
-        let input = "x%FFy";
-        assert_eq!(percent_decode(input), input);
-    }
-
-    #[test]
-    fn percent_decode_empty() {
-        assert_eq!(percent_decode(""), "");
+        assert!(response.contains("\"Amsterdam\""));
     }
 
     #[test]

@@ -412,17 +412,7 @@ impl DatabaseView {
         names
     }
 
-    pub(crate) fn locality_details(
-        &self,
-    ) -> Vec<(
-        &'static str,
-        u16,
-        &'static str,
-        u16,
-        &'static str,
-        bool,
-        bool,
-    )> {
+    pub(crate) fn locality_details(&self) -> Vec<super::LocalityDetail<'static>> {
         let (locality_names, parents) = self.collect_locality_names_and_parents();
         let muni_names = self.collect_municipality_names();
         let loc_had_suffix = self.collect_locality_had_suffix();
@@ -458,14 +448,20 @@ impl DatabaseView {
                 .copied()
                 .unwrap_or(false);
             let had_suffix = loc_had_suffix.get(i as usize).copied().unwrap_or(false);
-            result.push((name, wp_code, m_name, m_code, p_code, unique, had_suffix));
+            result.push(super::LocalityDetail {
+                name,
+                code: wp_code,
+                municipality: m_name,
+                municipality_code: m_code,
+                province: p_code,
+                unique,
+                had_suffix,
+            });
         }
         result
     }
 
-    pub(crate) fn municipality_details(
-        &self,
-    ) -> Vec<(&'static str, u16, &'static str, bool, bool)> {
+    pub(crate) fn municipality_details(&self) -> Vec<super::MunicipalityDetail<'static>> {
         let (locality_names, parents) = self.collect_locality_names_and_parents();
         let muni_names = self.collect_municipality_names();
         let loc_had_suffix = self.collect_locality_had_suffix();
@@ -493,7 +489,13 @@ impl DatabaseView {
                 .copied()
                 .unwrap_or(false);
             let had_suffix = muni_had_suffix.get(i as usize).copied().unwrap_or(false);
-            result.push((name, code, p_name, unique, had_suffix));
+            result.push(super::MunicipalityDetail {
+                name,
+                code,
+                province: p_name,
+                unique,
+                had_suffix,
+            });
         }
         result
     }

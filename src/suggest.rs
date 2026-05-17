@@ -13,97 +13,26 @@ pub const DEFAULT_SUGGEST_THRESHOLD: f32 = 0.7;
 /// Default maximum number of suggestions returned.
 pub const DEFAULT_SUGGEST_LIMIT: usize = 10;
 
-struct StaticLocality {
-    wp: &'static str,
-    wp_code: u16,
-    gm: &'static str,
-    gm_code: u16,
-    pv: &'static str,
-}
+/// Caribbean Netherlands locality names not present in the BAG/CBS sources we
+/// ingest. Kralendijk and Rincon are the localities of Bonaire; Caribisch
+/// Nederland is otherwise represented at the municipality level.
+static CN_LOCALITIES: &[&str] = &["Kralendijk", "Rincon"];
 
-struct StaticMunicipality {
-    gm: &'static str,
-    gm_code: u16,
-    pv: &'static str,
-}
+/// Caribbean Netherlands municipality names — the three openbare lichamen of
+/// Caribisch Nederland — not present in the BAG/CBS sources we ingest.
+static CN_MUNICIPALITIES: &[&str] = &["Bonaire", "Saba", "Sint Eustatius"];
 
-/// Caribbean Netherlands entries not present in the BAG/CBS sources we ingest.
-/// `pv = "BES"` marks the three openbare lichamen of Caribisch Nederland, which
-/// do not belong to a province. `wp_code` values for Kralendijk and Rincon are
-/// dummy values above the normal range to avoid conflicts with real localities, and
-/// `unique = true` marks them as not having any name duplicates in the database.
-static CN_LOCALITIES: &[StaticLocality] = &[
-    StaticLocality {
-        wp: "Kralendijk",
-        wp_code: 9001,
-        gm: "Bonaire",
-        gm_code: 1729,
-        pv: "BES",
-    },
-    StaticLocality {
-        wp: "Rincon",
-        wp_code: 9002,
-        gm: "Bonaire",
-        gm_code: 1729,
-        pv: "BES",
-    },
-];
-
-static CN_MUNICIPALITIES: &[StaticMunicipality] = &[
-    StaticMunicipality {
-        gm: "Bonaire",
-        gm_code: 1729,
-        pv: "BES",
-    },
-    StaticMunicipality {
-        gm: "Saba",
-        gm_code: 1731,
-        pv: "BES",
-    },
-    StaticMunicipality {
-        gm: "Sint Eustatius",
-        gm_code: 1730,
-        pv: "BES",
-    },
-];
-
-/// A single scored suggestion result.
-pub enum SuggestEntry {
-    Locality {
-        wp: String,
-        wp_code: u16,
-        gm: String,
-        gm_code: u16,
-        pv: String,
-        unique: bool,
-        had_suffix: bool,
-        /// Frisian/Dutch translation when the official BAG name has one.
-        alias: Option<&'static str>,
-    },
-    Municipality {
-        gm: String,
-        gm_code: u16,
-        pv: String,
-        unique: bool,
-        had_suffix: bool,
-    },
-}
-
-impl SuggestEntry {
-    pub fn name(&self) -> &str {
-        match self {
-            SuggestEntry::Locality { wp, .. } => wp,
-            SuggestEntry::Municipality { gm, .. } => gm,
-        }
-    }
-}
-
-/// Suggest localities and municipalities matching `query`.
+/// Suggest locality, municipality and (optionally) alias names matching `query`.
 ///
 /// Candidates scoring below `threshold` are discarded. At most `limit`
-/// highest-scoring results are returned, mixed across localities and
-/// municipalities. When `include_municipalities` is false, municipality
-/// names are omitted and only localities are returned.
+/// highest-scoring distinct names are returned, mixed across localities and
+/// municipalities. When `include_municipalities` is false, municipality names
+/// are not offered as suggestions. When `include_aliases` is false, the
+/// Frisian/Dutch aliases of localities are not offered as suggestions.
+///
+/// Names that originally carried a stripped province suffix get the province
+/// code appended (e.g. `Bergen` in Limburg becomes `Bergen (LI)`) so the
+/// caller can tell same-named places apart.
 ///
 /// Prefer calling [`DatabaseHandle::suggest`] — this free function backs it.
 pub(crate) fn suggest(
@@ -112,105 +41,80 @@ pub(crate) fn suggest(
     threshold: f32,
     limit: usize,
     include_municipalities: bool,
-) -> Vec<SuggestEntry> {
+    include_aliases: bool,
+) -> Vec<String> {
     let normalized = normalize_query(query);
     if normalized.is_empty() {
         return Vec::new();
     }
 
-    let mut scored: Vec<(f32, SuggestEntry)> = Vec::new();
+    // Each candidate is the display name returned to the caller (which may
+    // carry a province code). Fuzzy matching scores against this same string,
+    // so a query that spells out the province suffix can match it. Aliases are
+    // independent candidates — once expanded the originating name is irrelevant.
+    let mut candidates: Vec<String> = Vec::new();
 
-    for (wp, wp_code, gm, gm_code, pv, unique, had_suffix) in database.locality_details() {
-        let alias = lookup_alias(wp);
-        let name_score = fuzzy_score(&normalized, &normalize_query(wp));
-        let score = match alias {
-            Some(alias) => name_score.max(fuzzy_score(&normalized, &normalize_query(alias))),
-            None => name_score,
-        };
-        if score >= threshold {
-            scored.push((
-                score,
-                SuggestEntry::Locality {
-                    wp: wp.to_string(),
-                    wp_code,
-                    gm: gm.to_string(),
-                    gm_code,
-                    pv: pv.to_string(),
-                    unique,
-                    had_suffix,
-                    alias,
-                },
-            ));
+    for loc in database.locality_details() {
+        if include_aliases && let Some(alias) = lookup_alias(loc.name) {
+            candidates.push(alias.to_string());
         }
+
+        candidates.push(display_name(loc.name, loc.province, loc.had_suffix));
+    }
+
+    for &wp in CN_LOCALITIES {
+        candidates.push(wp.to_string());
     }
 
     if include_municipalities {
-        for (gm, gm_code, pv, unique, had_suffix) in database.municipality_details() {
-            let score = fuzzy_score(&normalized, &normalize_query(gm));
-            if score >= threshold {
-                scored.push((
-                    score,
-                    SuggestEntry::Municipality {
-                        gm: gm.to_string(),
-                        gm_code,
-                        pv: pv.to_string(),
-                        unique,
-                        had_suffix,
-                    },
-                ));
+        for muni in database.municipality_details() {
+            if include_aliases && let Some(alias) = lookup_alias(muni.name) {
+                candidates.push(alias.to_string());
             }
+
+            candidates.push(display_name(muni.name, muni.province, muni.had_suffix));
+        }
+
+        for &gm in CN_MUNICIPALITIES {
+            candidates.push(gm.to_string());
         }
     }
 
-    for entry in CN_LOCALITIES {
-        let score = fuzzy_score(&normalized, &normalize_query(entry.wp));
-        if score >= threshold {
-            scored.push((
-                score,
-                SuggestEntry::Locality {
-                    wp: entry.wp.to_string(),
-                    wp_code: entry.wp_code,
-                    gm: entry.gm.to_string(),
-                    gm_code: entry.gm_code,
-                    pv: entry.pv.to_string(),
-                    unique: true,
-                    had_suffix: false,
-                    alias: None,
-                },
-            ));
-        }
-    }
+    let mut scored: Vec<(f32, String)> = candidates
+        .into_iter()
+        .filter_map(|display| {
+            let score = fuzzy_score(&normalized, &normalize_query(&display));
+            (score >= threshold).then_some((score, display))
+        })
+        .collect();
 
-    if include_municipalities {
-        for entry in CN_MUNICIPALITIES {
-            let score = fuzzy_score(&normalized, &normalize_query(entry.gm));
-            if score >= threshold {
-                scored.push((
-                    score,
-                    SuggestEntry::Municipality {
-                        gm: entry.gm.to_string(),
-                        gm_code: entry.gm_code,
-                        pv: entry.pv.to_string(),
-                        unique: true,
-                        had_suffix: false,
-                    },
-                ));
-            }
-        }
-    }
-
-    scored.sort_by(|(a_score, a_entry), (b_score, b_entry)| {
+    // Highest score first; ties broken alphabetically so identical display
+    // names from the locality and municipality pools end up adjacent for
+    // deduplication.
+    scored.sort_by(|(a_score, a_name), (b_score, b_name)| {
         b_score
             .partial_cmp(a_score)
             .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a_entry.name().cmp(b_entry.name()))
+            .then_with(|| a_name.cmp(b_name))
     });
+    scored.dedup_by(|(_, a), (_, b)| a == b);
 
     scored
         .into_iter()
         .take(limit)
-        .map(|(_, entry)| entry)
+        .map(|(_, display)| display)
         .collect()
+}
+
+/// Format a suggestion name, appending the province code in parentheses when
+/// the name originally carried a stripped province suffix (e.g. `Bergen` in
+/// Limburg becomes `Bergen (LI)`).
+fn display_name(name: &str, province: &str, had_suffix: bool) -> String {
+    if had_suffix {
+        format!("{name} ({province})")
+    } else {
+        name.to_string()
+    }
 }
 
 /// Normalize user input and candidates for case-insensitive matching.
@@ -336,7 +240,51 @@ fn dice_coefficient(a: &str, b: &str) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{dice_coefficient, fuzzy_score, normalize_query, subsequence_ratio};
+    use super::{
+        DEFAULT_SUGGEST_LIMIT, DEFAULT_SUGGEST_THRESHOLD, dice_coefficient, fuzzy_score,
+        normalize_query, subsequence_ratio, suggest,
+    };
+
+    #[test]
+    fn suggest_appends_province_code_for_suffixed_names() {
+        use crate::{Database, DatabaseHandle, NumberRange, encode_pc};
+
+        // The "Bergen" locality carried a stripped province suffix in the
+        // source data; the "Bergen" municipality did not.
+        let database = DatabaseHandle::Decoded(Database {
+            localities: vec!["Bergen".to_string()],
+            locality_codes: vec![1],
+            public_spaces: vec!["Dorpsstraat".to_string()],
+            ranges: vec![NumberRange {
+                postal_code: encode_pc(b"1234AB"),
+                start: 1,
+                length: 1,
+                public_space_index: 0,
+                locality_index: 0,
+                step: 1,
+            }],
+            municipalities: vec!["Bergen".to_string()],
+            provinces: vec!["LI".to_string()],
+            municipality_codes: vec![1],
+            locality_municipality: vec![0],
+            municipality_province: vec![0],
+            locality_had_suffix: vec![true],
+            municipality_had_suffix: vec![false],
+        });
+
+        let results = suggest(
+            &database,
+            "Bergen",
+            DEFAULT_SUGGEST_THRESHOLD,
+            DEFAULT_SUGGEST_LIMIT,
+            true,
+            false,
+        );
+
+        // The suffixed locality is disambiguated; the municipality is not.
+        assert!(results.contains(&"Bergen (LI)".to_string()));
+        assert!(results.contains(&"Bergen".to_string()));
+    }
 
     #[test]
     fn fuzzy_score_prefers_substring_match() {

@@ -1,27 +1,37 @@
+use serde::Serialize;
+
 use crate::database::DatabaseHandle;
 
 use super::Response;
 
+/// One entry in the `/localities` JSON array.
+#[derive(Serialize)]
+struct LocalityEntry<'a> {
+    wp: &'a str,
+    wp_code: u16,
+    gm: &'a str,
+    gm_code: u16,
+    pv: &'a str,
+    unique: bool,
+    had_suffix: bool,
+}
+
 /// Handle the `/localities` endpoint by returning all localities with their municipality.
 pub(crate) fn handle_localities(database: &DatabaseHandle) -> Response {
-    let details = database.locality_details();
-    let mut body = String::from("[");
-    for (i, (wp, wp_code, gm, gm_code, pv, unique, had_suffix)) in details.iter().enumerate() {
-        if i > 0 {
-            body.push(',');
-        }
-        body.push_str(&format!(
-            "{{\"wp\":{},\"wp_code\":{},\"gm\":{},\"gm_code\":{},\"pv\":{},\"unique\":{},\"had_suffix\":{}}}",
-            serde_json::to_string(wp).expect("serialize wp"),
-            wp_code,
-            serde_json::to_string(gm).expect("serialize gm"),
-            gm_code,
-            serde_json::to_string(pv).expect("serialize pv"),
-            unique,
-            had_suffix,
-        ));
-    }
-    body.push(']');
+    let entries: Vec<LocalityEntry> = database
+        .locality_details()
+        .into_iter()
+        .map(|d| LocalityEntry {
+            wp: d.name,
+            wp_code: d.code,
+            gm: d.municipality,
+            gm_code: d.municipality_code,
+            pv: d.province,
+            unique: d.unique,
+            had_suffix: d.had_suffix,
+        })
+        .collect();
+    let body = serde_json::to_string(&entries).expect("serialize localities");
     Response::new(200, body)
 }
 
