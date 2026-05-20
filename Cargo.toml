@@ -25,7 +25,7 @@ webservice = ["dep:tokio", "dep:serde_json", "dep:serde", "dep:percent-encoding"
 [dependencies]
 zstd = { version = "0.13.3", optional = true }
 percent-encoding = { version = "2.3.2", optional = true }
-quick-xml = { version = "0.39.0", optional = true }
+quick-xml = { version = "0.40.0", optional = true }
 rayon = { version = "1.11.0", optional = true }
 serde = { version = "1.0.228", features = ["derive"], optional = true }
 serde_json = { version = "1.0.149", optional = true }
