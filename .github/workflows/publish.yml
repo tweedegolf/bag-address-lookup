@@ -12,6 +12,7 @@ permissions: {}
 
 jobs:
   publish:
+    environment: release
     permissions:
       id-token: write
       contents: read
