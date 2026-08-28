@@ -1,4 +1,6 @@
-# BAG address lookup
+# Bagatel
+
+A Dutch [BAG](https://www.kadaster.nl/zakelijk/registraties/basisregistraties/bag) address lookup service.
 
 Lookup a public space (street) name and locality (city/town) name for a given Dutch postal
 code and house number. This project builds a compact, query friendly database
@@ -28,7 +30,7 @@ The first argument is the address to listen on, like `0.0.0.0:3000`.
 This defaults to `127.0.0.1:8080`.
 
 ```sh
-./bag-service 0.0.0.0:3000
+./bagatel 0.0.0.0:3000
 ```
 
 Example request:
@@ -87,7 +89,7 @@ curl "http://127.0.0.1:8080/localities"
 Example response:
 
 ```json
-[{"wp":"Amsterdam","gm":"Amsterdam","gm_code":363},{"wp":"Amstelveen","gm":"Amstelveen","gm_code":34}]
+[{"wp":"Amsterdam","wp_code":3594,"gm":"Amsterdam","gm_code":363,"pv":"NH","unique":true,"had_suffix":false}]
 ```
 
 List all municipalities with their province:
@@ -99,7 +101,7 @@ curl "http://127.0.0.1:8080/municipalities"
 Example response:
 
 ```json
-[{"gm":"Amsterdam","gm_code":363,"pv":"Noord-Holland"},{"gm":"Rotterdam","gm_code":599,"pv":"Zuid-Holland"}]
+[{"gm":"Amsterdam","gm_code":363,"pv":"NH","unique":true,"had_suffix":false},{"gm":"Rotterdam","gm_code":599,"pv":"ZH","unique":true,"had_suffix":false}]
 ```
 
 Environment variables:
@@ -111,7 +113,7 @@ Environment variables:
 Lookup mode (postal code and house number arguments):
 
 ```sh
-./bag-service 1234AB 56
+./bagatel 1234AB 56
 ```
 
 Output (public space and locality, each on its own line):
@@ -137,7 +139,7 @@ All integers are little-endian.
 
 | Offset | Size             | Field                       | Description                            |
 |--------|------------------|-----------------------------|----------------------------------------|
-| 0      | 4                | magic header                | `BAG2`                                 |
+| 0      | 4                | magic header                | `BAG4`                                 |
 | 4      | 4                | locality_count              | number of locality names               |
 | 8      | 4                | public_space_count          | number of street names                 |
 | 12     | 4                | range_count                 | number of address ranges               |
@@ -155,6 +157,9 @@ All integers are little-endian.
 | 60     | 4                | locality_municipality_map_offset | start of locality-to-municipality map       |
 | 64     | 4                | municipality_province_map_offset | start of municipality-to-province map       |
 | 68     | 4                | municipality_codes_offset        | start of municipality CBS codes             |
+| 72     | 4                | locality_codes_offset            | start of locality BAG codes                 |
+| 76     | 4                | locality_had_suffix_offset       | start of locality had_suffix flags          |
+| 80     | 4                | municipality_had_suffix_offset   | start of municipality had_suffix flags      |
 | ...    | ...              | locality_offsets                  | `(locality_count + 1)` u32 offsets          |
 | ...    | ...              | locality_data                    | concatenated locality bytes                 |
 | ...    | ...              | public_space_offsets              | `(public_space_count + 1)` u32 offsets      |
@@ -167,6 +172,9 @@ All integers are little-endian.
 | ...    | 2 * loc_count    | locality_municipality_map         | u16 municipality index per locality         |
 | ...    | 1 * muni_count   | municipality_province_map         | u8 province index per municipality          |
 | ...    | 2 * muni_count   | municipality_codes                | u16 CBS municipality code per municipality  |
+| ...    | 2 * loc_count    | locality_codes                    | u16 BAG woonplaats code per locality        |
+| ...    | 1 * loc_count    | locality_had_suffix               | u8 flag (1 = stripped province suffix)      |
+| ...    | 1 * muni_count   | municipality_had_suffix           | u8 flag (1 = stripped province suffix)      |
 
 Range record (17 bytes):
 
@@ -183,7 +191,7 @@ A range covers house numbers: `start`, `start + step`, `start + 2*step`, ...,
 `start + length * step`. For example, odd numbers 1-9 are encoded as
 `start=1, length=4, step=2`.
 
-By default the `bag.bin` file is stored compressed with gzip. At startup, the web service
+By default the `bag.bin` file is stored compressed with zstd. At startup, the web service
 stream-decompresses it and decodes the data into:
 - `Vec<String>` for localities, public spaces, municipalities, and provinces
 - `Vec<NumberRange>` for address ranges
@@ -212,13 +220,13 @@ cargo run --release --bin create-db --no-default-features --features "create"
 ### Build the final release
 
 ```sh
-cargo build --release --bin bag-service
+cargo build --release --bin bagatel
 ```
 
 From an uncompressed database:
 
 ```sh
-cargo build --release --bin bag-service --no-default-features
+cargo build --release --bin bagatel --no-default-features
 ```
 
 ## Sources

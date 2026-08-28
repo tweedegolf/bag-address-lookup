@@ -65,9 +65,9 @@ impl ParsedData {
                     |reader| parse_municipality_relations(reader, &reference_date),
                 )?;
             } else {
-                match &name[..7] {
+                match name.get(..7) {
                     // Woonplaats (locality) - BAG catalog §7.2
-                    "9999WPL" => {
+                    Some("9999WPL") => {
                         data.localities = ParsedData::parse_nested_xml_zip(
                             start,
                             &mut entry,
@@ -76,7 +76,7 @@ impl ParsedData {
                         )?;
                     }
                     // OpenbareRuimte (public space) - BAG catalog §7.3
-                    "9999OPR" => {
+                    Some("9999OPR") => {
                         data.public_spaces = ParsedData::parse_nested_xml_zip(
                             start,
                             &mut entry,
@@ -85,7 +85,7 @@ impl ParsedData {
                         )?;
                     }
                     // Nummeraanduiding (address designation) - BAG catalog §7.4
-                    "9999NUM" => {
+                    Some("9999NUM") => {
                         data.addresses = ParsedData::parse_nested_xml_zip(
                             start,
                             &mut entry,
@@ -130,7 +130,11 @@ impl ParsedData {
             .map(|i| -> Result<Vec<T>, Box<dyn Error + Send + Sync>> {
                 let mut inner_zip = ZipArchive::new(Cursor::new(&buf[..]))?;
                 let inner_entry = inner_zip.by_index(i)?;
-                if !inner_entry.name().ends_with(".xml") {
+                let entry_name = inner_entry.name();
+                let base_name = entry_name.rsplit('/').next().unwrap_or(entry_name);
+                // Skip non-XML entries and metadata junk such as macOS
+                // AppleDouble files (`__MACOSX/._foo.xml`), which are binary.
+                if !entry_name.ends_with(".xml") || base_name.starts_with('.') {
                     return Ok(Vec::new());
                 }
                 let mut reader = BufReader::new(inner_entry);

@@ -1,10 +1,7 @@
 #[cfg(feature = "cli")]
-use bag_address_lookup::DatabaseHandle;
+use bagatel::DatabaseHandle;
 
-const VERSION_TEXT: &str = concat!(
-    "BAG Address Lookup Service version ",
-    env!("CARGO_PKG_VERSION")
-);
+const VERSION_TEXT: &str = concat!("Bagatel version ", env!("CARGO_PKG_VERSION"));
 
 fn is_version_flag(arg: &str) -> bool {
     arg == "--version" || arg == "-v"
@@ -84,7 +81,7 @@ async fn run_server(args: &[String]) -> i32 {
 
     println!("Starting BAG webservice on {}", addr);
 
-    if let Err(e) = bag_address_lookup::serve(&addr).await {
+    if let Err(e) = bagatel::serve(&addr).await {
         eprintln!("Error running service: {}", e);
         return 1;
     }
@@ -94,12 +91,12 @@ async fn run_server(args: &[String]) -> i32 {
 #[cfg(not(feature = "webservice"))]
 fn print_usage() {
     eprintln!("Usage:");
-    eprintln!("  bag-service --version");
+    eprintln!("  bagatel --version");
     #[cfg(feature = "cli")]
     {
-        eprintln!("  bag-service <postal_code> <house_number>");
-        eprintln!("  bag-service list-localities");
-        eprintln!("  bag-service list-municipalities");
+        eprintln!("  bagatel <postal_code> <house_number>");
+        eprintln!("  bagatel list-localities");
+        eprintln!("  bagatel list-municipalities");
     }
 }
 
@@ -148,7 +145,7 @@ fn main() {
     }
 
     eprintln!(
-        "bag-service was built without the 'cli' or 'webservice' features enabled; nothing to do."
+        "bagatel was built without the 'cli' or 'webservice' features enabled; nothing to do."
     );
     print_usage();
     std::process::exit(1);

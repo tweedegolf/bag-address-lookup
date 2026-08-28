@@ -13,15 +13,15 @@ use super::xml_utils::{
     VOORKOMEN_ID_TAG, VoorkomenState, read_simple_tag,
 };
 
-const OPR_TAG: &[u8] = b"Objecten:OpenbareRuimte";
+const OPR_TAG: &str = "Objecten:OpenbareRuimte";
 // §7.3.1 identificatie - 16-digit national identifier
-const ID_TAG: &[u8] = b"Objecten:identificatie";
+const ID_TAG: &str = "Objecten:identificatie";
 // §7.3.2 naam - official public space name (max 80 characters)
-const NAME_TAG: &[u8] = b"Objecten:naam";
+const NAME_TAG: &str = "Objecten:naam";
 // §7.3.6 ligtIn - reference to the Woonplaats this public space belongs to
-const LOCALITY_REF_TAG: &[u8] = b"Objecten-ref:WoonplaatsRef";
+const LOCALITY_REF_TAG: &str = "Objecten-ref:WoonplaatsRef";
 // §7.3.4 status - lifecycle status of the public space
-const STATUS_TAG: &[u8] = b"Objecten:status";
+const STATUS_TAG: &str = "Objecten:status";
 // Only include public spaces where a name has been officially issued
 const ISSUED_STATUS: &str = "Naamgeving uitgegeven";
 

@@ -113,6 +113,13 @@ pub(crate) fn normalize_postalcode(postalcode: &str) -> Option<[u8; 6]> {
         *dst = src.to_ascii_uppercase();
     }
 
+    // Reject anything but 4 digits + 2 letters; encode_pc assumes this shape.
+    if !normalized[..4].iter().all(|b| b.is_ascii_digit())
+        || !normalized[4..].iter().all(|b| b.is_ascii_uppercase())
+    {
+        return None;
+    }
+
     Some(normalized)
 }
 
@@ -135,7 +142,22 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::encode_pc;
+    use super::{encode_pc, normalize_postalcode};
+
+    #[test]
+    fn normalize_postalcode_accepts_valid_input() {
+        assert_eq!(normalize_postalcode("1234AB"), Some(*b"1234AB"));
+        assert_eq!(normalize_postalcode("1234ab"), Some(*b"1234AB"));
+    }
+
+    #[test]
+    fn normalize_postalcode_rejects_malformed_input() {
+        assert_eq!(normalize_postalcode("1234A"), None);
+        assert_eq!(normalize_postalcode("123456"), None);
+        assert_eq!(normalize_postalcode("AB1234"), None);
+        assert_eq!(normalize_postalcode("!!!!AB"), None);
+        assert_eq!(normalize_postalcode("12345é"), None);
+    }
 
     #[test]
     fn encode_pc_basic() {

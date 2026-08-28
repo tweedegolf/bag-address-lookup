@@ -1,4 +1,4 @@
-FROM ubuntu:24.04 AS final-base
+FROM ubuntu:26.04 AS final-base
 RUN apt-get update && apt-get install adduser -y && apt-get upgrade -y
 
 # create a non root user to run the binary
@@ -11,13 +11,13 @@ RUN addgroup --gid ${gid} ${group} && adduser --uid ${uid} --gid ${gid} --system
 WORKDIR /home/${user}
 USER $user
 
-FROM final-base AS bag-service
+FROM final-base AS bagatel
 ARG version=dev
 
-COPY --chown=nonroot:nonroot ./bag-service-linux-x64 ./bag-service
-RUN chmod 755 bag-service
+COPY --chown=nonroot:nonroot ./bagatel-linux-x64 ./bagatel
+RUN chmod 755 bagatel
 
-EXPOSE 3000
+EXPOSE 8080
 ENV VERSION=${version}
-ENTRYPOINT ["./bag-service"]
+ENTRYPOINT ["./bagatel"]
 CMD [ "0.0.0.0:8080" ]

@@ -28,11 +28,11 @@ impl VoorkomenState {
     }
 }
 
-pub(crate) const END_VALIDITY_TAG: &[u8] = b"Historie:eindGeldigheid";
-pub(crate) const BEGIN_VALIDITY_TAG: &[u8] = b"Historie:beginGeldigheid";
-pub(crate) const TIJDSTIP_INACTIEF_TAG: &[u8] = b"Historie:tijdstipInactief";
-pub(crate) const TIJDSTIP_NIETBAG_TAG: &[u8] = b"Historie:tijdstipNietBAG";
-pub(crate) const VOORKOMEN_ID_TAG: &[u8] = b"Historie:voorkomenidentificatie";
+pub(crate) const END_VALIDITY_TAG: &str = "Historie:eindGeldigheid";
+pub(crate) const BEGIN_VALIDITY_TAG: &str = "Historie:beginGeldigheid";
+pub(crate) const TIJDSTIP_INACTIEF_TAG: &str = "Historie:tijdstipInactief";
+pub(crate) const TIJDSTIP_NIETBAG_TAG: &str = "Historie:tijdstipNietBAG";
+pub(crate) const VOORKOMEN_ID_TAG: &str = "Historie:voorkomenidentificatie";
 
 /// Read the text content of an element, stopping at its end tag.
 ///
@@ -42,7 +42,7 @@ pub(crate) const VOORKOMEN_ID_TAG: &[u8] = b"Historie:voorkomenidentificatie";
 /// containing characters like `ë` round-trip intact (e.g. `1e Exloërmond`).
 pub(crate) fn read_simple_tag<B: BufRead>(
     reader: &mut Reader<B>,
-    end: &[u8],
+    end: &str,
     buf: &mut Vec<u8>,
 ) -> Result<Option<String>, quick_xml::Error> {
     let mut content: Option<String> = None;
@@ -50,16 +50,12 @@ pub(crate) fn read_simple_tag<B: BufRead>(
     loop {
         buf.clear();
         match reader.read_event_into(buf)? {
-            Event::Text(t) => content
-                .get_or_insert_with(String::new)
-                .push_str(&t.decode()?),
-            Event::CData(t) => content
-                .get_or_insert_with(String::new)
-                .push_str(&t.decode()?),
+            Event::Text(t) => content.get_or_insert_with(String::new).push_str(&t),
+            Event::CData(t) => content.get_or_insert_with(String::new).push_str(&t),
             Event::GeneralRef(r) => {
                 if let Some(ch) = r.resolve_char_ref()? {
                     content.get_or_insert_with(String::new).push(ch);
-                } else if let Some(expanded) = resolve_predefined_entity(&r.decode()?) {
+                } else if let Some(expanded) = resolve_predefined_entity(&r) {
                     content.get_or_insert_with(String::new).push_str(expanded);
                 }
             }

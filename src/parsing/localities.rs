@@ -18,13 +18,13 @@ use super::{
     },
 };
 
-const WP_TAG: &[u8] = b"Objecten:Woonplaats";
+const WP_TAG: &str = "Objecten:Woonplaats";
 // §7.2.1 identificatie - unique four-digit national identifier
-const ID_TAG: &[u8] = b"Objecten:identificatie";
+const ID_TAG: &str = "Objecten:identificatie";
 // §7.2.2 naam - official locality name
-const NAME_TAG: &[u8] = b"Objecten:naam";
+const NAME_TAG: &str = "Objecten:naam";
 // §7.2.3 status - "Woonplaats aangewezen" (active) or "Woonplaats ingetrokken" (retracted)
-const STATUS_TAG: &[u8] = b"Objecten:status";
+const STATUS_TAG: &str = "Objecten:status";
 const STATUS_RETRACTED: &str = "Woonplaats ingetrokken";
 
 #[derive(Debug, PartialEq, Eq)]

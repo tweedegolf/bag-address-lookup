@@ -11,12 +11,12 @@ use quick_xml::{events::Event, reader::Reader};
 
 use super::xml_utils::read_simple_tag;
 
-const GWR_TAG: &[u8] = b"gwr-product:GemeenteWoonplaatsRelatie";
-const RELATED_WP_TAG: &[u8] = b"gwr-product:gerelateerdeWoonplaats";
-const RELATED_GM_TAG: &[u8] = b"gwr-product:gerelateerdeGemeente";
-const ID_TAG: &[u8] = b"gwr-product:identificatie";
-const BEGIN_VALIDITY_TAG: &[u8] = b"bagtypes:begindatumTijdvakGeldigheid";
-const END_VALIDITY_TAG: &[u8] = b"bagtypes:einddatumTijdvakGeldigheid";
+const GWR_TAG: &str = "gwr-product:GemeenteWoonplaatsRelatie";
+const RELATED_WP_TAG: &str = "gwr-product:gerelateerdeWoonplaats";
+const RELATED_GM_TAG: &str = "gwr-product:gerelateerdeGemeente";
+const ID_TAG: &str = "gwr-product:identificatie";
+const BEGIN_VALIDITY_TAG: &str = "bagtypes:begindatumTijdvakGeldigheid";
+const END_VALIDITY_TAG: &str = "bagtypes:einddatumTijdvakGeldigheid";
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct MunicipalityRelation {
@@ -117,7 +117,7 @@ fn parse_relation<B: BufRead>(
 /// Read a `gwr-product:identificatie` value nested inside a parent element.
 fn parse_nested_id<B: BufRead>(
     reader: &mut Reader<B>,
-    parent_end: &[u8],
+    parent_end: &str,
     buf: &mut Vec<u8>,
 ) -> Result<Option<u16>, quick_xml::Error> {
     let mut id = None;

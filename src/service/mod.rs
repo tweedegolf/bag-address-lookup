@@ -73,7 +73,7 @@ where
     }
 
     if !logging_disabled() {
-        println!("[bag-address-lookup] database initialized");
+        println!("[bagatel] database initialized");
     }
 
     let mut shutdown = Box::pin(shutdown);
@@ -152,10 +152,7 @@ async fn handle_connection(
     let target = parts.next().unwrap_or_default();
 
     if !logging_disabled() {
-        println!(
-            "[bag-address-lookup] received request: {} {}",
-            method, target
-        );
+        println!("[bagatel] received request: {} {}", method, target);
     }
 
     if method != "GET" {
@@ -232,19 +229,19 @@ async fn write_response(
         if status_code == 200 {
             if let Some(duration_ms) = duration_ms {
                 println!(
-                    "[bag-address-lookup] successful lookup ({} ms): {}",
+                    "[bagatel] successful lookup ({} ms): {}",
                     duration_ms, preview
                 );
             } else {
-                println!("[bag-address-lookup] successful lookup: {}", preview);
+                println!("[bagatel] successful lookup: {}", preview);
             }
         } else if let Some(duration_ms) = duration_ms {
             eprintln!(
-                "[bag-address-lookup] error {} ({} ms): {}",
+                "[bagatel] error {} ({} ms): {}",
                 status_code, duration_ms, preview
             );
         } else {
-            eprintln!("[bag-address-lookup] error {}: {}", status_code, preview);
+            eprintln!("[bagatel] error {}: {}", status_code, preview);
         }
     }
 

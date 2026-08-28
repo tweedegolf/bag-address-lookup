@@ -14,17 +14,17 @@ use super::xml_utils::{
     VOORKOMEN_ID_TAG, VoorkomenState, read_simple_tag,
 };
 
-const NUM_TAG: &[u8] = b"Objecten:Nummeraanduiding";
+const NUM_TAG: &str = "Objecten:Nummeraanduiding";
 // §7.4.1 identificatie - 16-digit national identifier
-const ID_TAG: &[u8] = b"Objecten:identificatie";
+const ID_TAG: &str = "Objecten:identificatie";
 // §7.4.2 huisnummer - house number (1-99999)
-const HOUSE_NUMBER_TAG: &[u8] = b"Objecten:huisnummer";
+const HOUSE_NUMBER_TAG: &str = "Objecten:huisnummer";
 // §7.4.5 postcode - 6-character Dutch postal code (e.g. "1234AB")
-const POSTAL_CODE_TAG: &[u8] = b"Objecten:postcode";
+const POSTAL_CODE_TAG: &str = "Objecten:postcode";
 // §7.4.8 ligtAan - reference to the OpenbareRuimte this address belongs to
-const PUBLIC_SPACE_REF_TAG: &[u8] = b"Objecten-ref:OpenbareRuimteRef";
+const PUBLIC_SPACE_REF_TAG: &str = "Objecten-ref:OpenbareRuimteRef";
 // §7.4.7 status - lifecycle status of the address designation
-const STATUS_TAG: &[u8] = b"Objecten:status";
+const STATUS_TAG: &str = "Objecten:status";
 // Only include addresses where a name/number has been officially issued
 const ISSUED_STATUS: &str = "Naamgeving uitgegeven";
 
